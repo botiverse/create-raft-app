@@ -15,6 +15,7 @@ head_sampling_rate = 1
 [vars]
 APP_ORIGIN = "http://localhost:8787"
 RAFT_CLIENT_ID = "__PACKAGE_NAME__"
+# Production Raft defaults. Override only for non-production/self-hosted Raft.
 RAFT_ORIGIN = "https://app.raft.build"
 RAFT_API_ORIGIN = "https://api.raft.build"
 
@@ -36,4 +37,3 @@ queue = "__PACKAGE_NAME__-events"
 queue = "__PACKAGE_NAME__-events"
 max_batch_size = 10
 max_batch_timeout = 5
-
