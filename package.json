@@ -12,7 +12,8 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test",
+    "test": "node --test && npm run conformance",
+    "conformance": "node conformance/run-conformance.mjs",
     "smoke": "node bin/create-raft-app.mjs tmp/smoke --template hono-react-cfworker --yes --no-install"
   },
   "keywords": [

@@ -42,3 +42,10 @@ npx wrangler secret put RAFT_CLIENT_SECRET
 stores optional payload bytes in R2, and emits a Queue message. Replace it
 with your product domain routes, but keep the binding shape.
 
+## Raft manifest
+
+The canonical Agent Login manifest route is
+`/.well-known/raft-agent-manifest.json` with schema
+`raft-agent-manifest.v0`. The Worker also serves
+`/.well-known/slock-agent-manifest.json` as a compatibility alias for older
+platform clients.

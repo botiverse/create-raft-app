@@ -17,13 +17,16 @@ This repo was generated from `create-raft-app` template `__TEMPLATE_NAME__`.
 | `worker/` | Hono Worker API, Raft auth, OpenAPI, D1/R2/Queue bindings, Cloudflare deploy config. |
 | `admin/` | React admin UI and generated static docs assets. |
 | `docs/public/` | Markdown docs served at `/docs`. |
+| `raft-template.json` | Template descriptor aligned with the `raft-app-templates` contract. |
 | `.github/workflows/` | CI validation. |
 
 ## Raft-native app contract
 
 - Browser auth uses Login with Raft.
 - Agents use Raft Agent Login and Bearer auth against `/api/*`.
-- `/.well-known/raft-agent-manifest.json` describes the service.
+- `/.well-known/raft-agent-manifest.json` describes the service with
+  `raft-agent-manifest.v0`; `/.well-known/slock-agent-manifest.json` is kept
+  as a compatibility alias.
 - `/openapi.json` is generated from route definitions.
 - `/api-docs` renders the current API contract.
 - Cloudflare bindings are first-class: D1 for relational state, R2 for files,

@@ -9,6 +9,8 @@ This is a Raft-native Cloudflare app:
 - `admin/` — React admin frontend and static docs shell.
 - `docs/public/` — public docs rendered into the admin assets.
 - `AGENTS.md` — first-page guide for AI agents working in this repo.
+- `raft-template.json` — Raft template descriptor aligned with the
+  `raft-app-templates` conformance contract.
 - Cloudflare bindings: D1 (`DB`), R2 (`FILES`), Queue (`APP_EVENTS`), and
   Static Assets (`ASSETS`).
 
@@ -38,6 +40,7 @@ Before production deploy, configure Worker vars/secrets:
 The generated routes expose:
 
 - `/.well-known/raft-agent-manifest.json`
+- `/.well-known/slock-agent-manifest.json` (compat alias)
 - `/api/auth/login`
 - `/login/raft/callback`
 - `/api/auth/me`

@@ -14,7 +14,14 @@ Returns Worker health.
 GET /.well-known/raft-agent-manifest.json
 ```
 
-Describes the app as a Raft Agent Login HTTP API service.
+Describes the app as a Raft Agent Login HTTP API service using
+`raft-agent-manifest.v0`.
+
+```http
+GET /.well-known/slock-agent-manifest.json
+```
+
+Compatibility alias for older platform clients.
 
 ## Auth
 
