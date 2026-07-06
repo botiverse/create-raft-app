@@ -1,0 +1,20 @@
+{
+  "name": "__PACKAGE_NAME__",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "worker",
+    "admin"
+  ],
+  "scripts": {
+    "dev": "npm --workspace @__PACKAGE_NAME__/worker run dev",
+    "build": "npm run build:admin && npm run build:worker",
+    "build:admin": "npm --workspace @__PACKAGE_NAME__/admin run build",
+    "build:worker": "npm --workspace @__PACKAGE_NAME__/worker run build",
+    "deploy": "npm run build && npm --workspace @__PACKAGE_NAME__/worker run deploy"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

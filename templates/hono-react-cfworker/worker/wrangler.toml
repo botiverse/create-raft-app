@@ -1,0 +1,39 @@
+name = "__PACKAGE_NAME__"
+main = "src/index.ts"
+compatibility_date = "2026-07-06"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "../admin/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[vars]
+APP_ORIGIN = "http://localhost:8787"
+RAFT_CLIENT_ID = "__PACKAGE_NAME__"
+RAFT_ORIGIN = "https://app.raft.build"
+RAFT_API_ORIGIN = "https://api.raft.build"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "__PACKAGE_NAME__"
+database_id = "replace-with-d1-database-id"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "__PACKAGE_NAME__-files"
+
+[[queues.producers]]
+binding = "APP_EVENTS"
+queue = "__PACKAGE_NAME__-events"
+
+[[queues.consumers]]
+queue = "__PACKAGE_NAME__-events"
+max_batch_size = 10
+max_batch_timeout = 5
+
