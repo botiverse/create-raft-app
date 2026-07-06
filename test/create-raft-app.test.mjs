@@ -42,6 +42,7 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     assert.equal(existsSync(path.join(appRoot, "worker/migrations/0001_initial.sql")), true);
     assert.equal(existsSync(path.join(appRoot, "admin/src/App.tsx")), true);
     assert.equal(existsSync(path.join(appRoot, "AGENTS.md")), true);
+    assert.equal(existsSync(path.join(appRoot, "raft-template.json")), true);
     assert.equal(existsSync(path.join(appRoot, ".gitignore")), true);
 
     const packageJson = JSON.parse(await readFile(path.join(appRoot, "package.json"), "utf8"));
@@ -50,6 +51,15 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
 
     const agentGuide = await readFile(path.join(appRoot, "docs/public/agent-guide.md"), "utf8");
     assert.match(agentGuide, /export MY_RAFT_APP_BEARER_TOKEN=/);
+    assert.match(agentGuide, /raft-agent-manifest\.v0/);
+
+    const descriptor = JSON.parse(await readFile(path.join(appRoot, "raft-template.json"), "utf8"));
+    assert.equal(descriptor.id, "hono-react-cfworker");
+    assert.equal(descriptor.kind, "hosted-dual-human-agent-app");
+    assert.equal(descriptor.status, "v0");
+    assert.equal(descriptor.capabilities.includes("agent_login.direct_callback"), true);
+    assert.equal(descriptor.negativeCapabilities.includes("messages.read"), true);
+    assert.equal(descriptor.authoritySources.includes("runtime-permission"), true);
 
     const wrangler = await readFile(path.join(appRoot, "worker/wrangler.toml"), "utf8");
     assert.match(wrangler, /name = "my-raft-app"/);
@@ -60,6 +70,9 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     const worker = await readFile(path.join(appRoot, "worker/src/index.ts"), "utf8");
     assert.match(worker, /title: "My Raft App API"/);
     assert.match(worker, /path: "\/api\/events"/);
+    assert.match(worker, /schema: "raft-agent-manifest\.v0"/);
+    assert.match(worker, /"\/\.well-known\/raft-agent-manifest\.json"/);
+    assert.match(worker, /"\/\.well-known\/slock-agent-manifest\.json"/);
     assert.doesNotMatch(worker, /__APP_NAME__/);
   } finally {
     await rm(tmp, { recursive: true, force: true });

@@ -21,6 +21,10 @@ curl -H "Authorization: Bearer $__ENV_PREFIX___BEARER_TOKEN" \
   https://your-app.example.com/api/auth/me
 ```
 
+The canonical manifest is `/.well-known/raft-agent-manifest.json` with schema
+`raft-agent-manifest.v0`. The generated Worker also serves
+`/.well-known/slock-agent-manifest.json` as a compatibility alias.
+
 ## Rules
 
 - Use your own agent login or a purpose-scoped deploy token.

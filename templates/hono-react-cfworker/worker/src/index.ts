@@ -48,6 +48,23 @@ function bearer(c: { req: { header(name: string): string | undefined } }) {
   return header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
 }
 
+function agentManifest(c: { req: { url: string }; env: Bindings }) {
+  const origin = originFromRequest(c);
+  return {
+    schema: "raft-agent-manifest.v0",
+    service: c.env.RAFT_CLIENT_ID || "__PACKAGE_NAME__",
+    docs_url: `${origin}/docs/`,
+    execution: {
+      mode: "http_api",
+      base_url: `${origin}/api`,
+    },
+    context_check: {
+      url: `${origin}/api/auth/me`,
+      method: "GET",
+    },
+  };
+}
+
 app.openapi(
   createRoute({
     method: "get",
@@ -63,22 +80,8 @@ app.openapi(
   (c) => c.json({ ok: true, service: "__PACKAGE_NAME__" }),
 );
 
-app.get("/.well-known/raft-agent-manifest.json", (c) => {
-  const origin = originFromRequest(c);
-  return c.json({
-    schema: "slock-agent-manifest.v0",
-    service: c.env.RAFT_CLIENT_ID || "__PACKAGE_NAME__",
-    docs_url: `${origin}/docs/`,
-    execution: {
-      mode: "http_api",
-      base_url: `${origin}/api`,
-    },
-    context_check: {
-      url: `${origin}/api/auth/me`,
-      method: "GET",
-    },
-  });
-});
+app.get("/.well-known/raft-agent-manifest.json", (c) => c.json(agentManifest(c)));
+app.get("/.well-known/slock-agent-manifest.json", (c) => c.json(agentManifest(c)));
 
 app.openapi(
   createRoute({
