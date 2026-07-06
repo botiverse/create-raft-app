@@ -29,13 +29,15 @@ npm run build
 
 ## Raft setup
 
-Before production deploy, configure Worker vars/secrets:
+Before production deploy, configure these Worker vars/secrets:
 
 - `RAFT_CLIENT_ID`
 - `RAFT_CLIENT_SECRET`
-- `RAFT_ORIGIN`
-- `RAFT_API_ORIGIN`
 - `APP_ORIGIN`
+
+`RAFT_ORIGIN` and `RAFT_API_ORIGIN` already default to production Raft in
+`worker/wrangler.toml`. Override them only for non-production or self-hosted
+Raft environments.
 
 The generated routes expose:
 

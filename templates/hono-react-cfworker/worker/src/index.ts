@@ -128,8 +128,10 @@ app.get("/api/auth/login", (c) => {
 app.get("/login/raft/callback", (c) => {
   const code = c.req.query("code");
   if (!code) return c.json({ error: "missing code" }, 400);
-  // TODO: Exchange the code server-side with RAFT_API_ORIGIN and set an
+  // TODO: Exchange the code server-side with the Raft API and set an
   // HttpOnly browser cookie for humans, or return JSON for agent callbacks.
+  // RAFT_API_ORIGIN defaults to production Raft, with an override available for
+  // non-production/self-hosted environments.
   return c.json({
     ok: true,
     token_type: "Bearer",

@@ -29,6 +29,10 @@ Set the Raft client secret as a Worker secret:
 npx wrangler secret put RAFT_CLIENT_SECRET
 ```
 
+`RAFT_ORIGIN` and `RAFT_API_ORIGIN` default to production Raft in
+`wrangler.toml`; change them only for non-production or self-hosted Raft
+environments.
+
 ## Bindings
 
 | Binding | Type | Use |
