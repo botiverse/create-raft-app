@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "__PACKAGE_NAME__",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../admin/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "APP_ORIGIN": "http://localhost:8787",
+    "RAFT_CLIENT_ID": "__PACKAGE_NAME__",
+    "RAFT_ORIGIN": "https://app.raft.build",
+    "RAFT_API_ORIGIN": "https://api.raft.build"
+  }
+}
