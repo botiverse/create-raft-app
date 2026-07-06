@@ -1,0 +1,60 @@
+# __APP_NAME__
+
+Generated from `create-raft-app` template `__TEMPLATE_NAME__`.
+
+This is a Raft-native Cloudflare app:
+
+- `worker/` — Hono Worker API, Agent Login manifest, OpenAPI, API docs,
+  and D1/R2/Queue bindings.
+- `admin/` — React admin frontend and static docs shell.
+- `docs/public/` — public docs rendered into the admin assets.
+- `AGENTS.md` — first-page guide for AI agents working in this repo.
+- Cloudflare bindings: D1 (`DB`), R2 (`FILES`), Queue (`APP_EVENTS`), and
+  Static Assets (`ASSETS`).
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+## Raft setup
+
+Before production deploy, configure Worker vars/secrets:
+
+- `RAFT_CLIENT_ID`
+- `RAFT_CLIENT_SECRET`
+- `RAFT_ORIGIN`
+- `RAFT_API_ORIGIN`
+- `APP_ORIGIN`
+
+The generated routes expose:
+
+- `/.well-known/raft-agent-manifest.json`
+- `/api/auth/login`
+- `/login/raft/callback`
+- `/api/auth/me`
+- `/openapi.json`
+- `/api-docs`
+
+Fill in the OAuth exchange and product-specific routes before production use.
+
+## Infrastructure
+
+The Worker template uses `wrangler.toml` and includes D1/R2/Queue bindings.
+Provision them before deploy:
+
+```bash
+cd worker
+npx wrangler d1 create __PACKAGE_NAME__
+npx wrangler r2 bucket create __PACKAGE_NAME__-files
+npx wrangler queues create __PACKAGE_NAME__-events
+npx wrangler d1 migrations apply __PACKAGE_NAME__ --remote
+```
