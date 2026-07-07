@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -7,12 +7,20 @@ import { spawn } from "node:child_process";
 import { test } from "node:test";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+const templateNames = [
+  "hono-react-cfworker",
+  "pure-sign-in-web-app",
+  "local-cli-wrapper",
+  "hosted-http-action-service",
+  "oauth-http-action-service",
+  "hosted-dual-human-agent-app",
+];
 
-function run(args, cwd) {
+function run(args, cwd, input) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [path.join(repoRoot, "bin/create-raft-app.mjs"), ...args], {
       cwd,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";
     let stderr = "";
@@ -27,8 +35,115 @@ function run(args, cwd) {
       if (code === 0) resolve({ stdout, stderr });
       else reject(new Error(`exit ${code}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
     });
+    if (input !== undefined) {
+      child.stdin.end(input);
+    } else {
+      child.stdin.end();
+    }
   });
 }
+
+function npm(args, cwd) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("npm", args, {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error(`npm ${args.join(" ")} exit ${code}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    });
+  });
+}
+
+async function readGeneratedTextFiles(dir) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = [];
+  const textExtensions = new Set([
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".jsonc",
+    ".md",
+    ".mjs",
+    ".sql",
+    ".toml",
+    ".ts",
+    ".tsx",
+    ".txt",
+    ".yaml",
+    ".yml",
+  ]);
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await readGeneratedTextFiles(entryPath));
+    } else if (entry.isFile() && textExtensions.has(path.extname(entry.name))) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+async function assertNoGeneratedLegacyBranding(appRoot) {
+  for (const file of await readGeneratedTextFiles(appRoot)) {
+    const content = await readFile(file, "utf8");
+    assert.doesNotMatch(content, /slock/i, `${path.relative(appRoot, file)} should use Raft branding`);
+  }
+}
+
+test("lists every packaged template", async () => {
+  const result = await run(["--list-templates"], repoRoot);
+  assert.match(result.stdout, /^Available templates:/m);
+  for (const templateName of templateNames) {
+    assert.match(result.stdout, new RegExp(`^\\d+\\. ${templateName} - `, "m"));
+  }
+});
+
+test("test template list matches packaged template directories", async () => {
+  const dirs = await readdir(path.join(repoRoot, "templates"), { withFileTypes: true });
+  const packagedTemplateNames = dirs
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  assert.deepEqual([...templateNames].sort(), packagedTemplateNames);
+});
+
+test("help documents template listing and default", async () => {
+  const result = await run(["--help"], repoRoot);
+  assert.match(result.stdout, /--list-templates\s+Print available templates/);
+  assert.match(result.stdout, /Default template: hono-react-cfworker/);
+});
+
+test("unknown template error lists available templates", async () => {
+  await assert.rejects(
+    () => run(["bad-app", "--template", "missing-template", "--yes", "--no-install"], repoRoot),
+    /Unknown template 'missing-template'.*hono-react-cfworker.*hosted-dual-human-agent-app/s,
+  );
+});
+
+test("interactive template prompt defaults to hono-react-cfworker", async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
+  try {
+    const result = await run(["interactive-app", "--no-install"], tmp, "\n");
+    assert.match(result.stdout, /Template name or number \[hono-react-cfworker\]:/);
+    assert.match(result.stdout, /Created interactive-app from hono-react-cfworker/);
+    const descriptor = JSON.parse(await readFile(path.join(tmp, "interactive-app/raft-template.json"), "utf8"));
+    assert.equal(descriptor.id, "hono-react-cfworker");
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
 
 test("scaffolds hono-react-cfworker template with replacements", async () => {
   const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
@@ -85,3 +200,31 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     await rm(tmp, { recursive: true, force: true });
   }
 });
+
+for (const templateName of templateNames) {
+  test(`scaffolds and builds ${templateName}`, async () => {
+    const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
+    try {
+      const projectName = `my-${templateName}`;
+      const result = await run([projectName, "--template", templateName, "--yes", "--no-install"], tmp);
+      assert.match(result.stdout, new RegExp(`Created ${projectName} from ${templateName}`));
+
+      const appRoot = path.join(tmp, projectName);
+      assert.equal(existsSync(path.join(appRoot, "README.md")), true);
+      assert.equal(existsSync(path.join(appRoot, "raft-template.json")), true);
+
+      const packageJson = JSON.parse(await readFile(path.join(appRoot, "package.json"), "utf8"));
+      assert.equal(packageJson.name, projectName);
+      assert.equal(typeof packageJson.scripts?.build, "string");
+
+      const descriptor = JSON.parse(await readFile(path.join(appRoot, "raft-template.json"), "utf8"));
+      assert.equal(descriptor.id, templateName);
+      await assertNoGeneratedLegacyBranding(appRoot);
+
+      await npm(["install", "--ignore-scripts"], appRoot);
+      await npm(["run", "build"], appRoot);
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  });
+}

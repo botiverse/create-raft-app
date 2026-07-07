@@ -1,0 +1,15 @@
+{
+  "name": "Pure Sign-In Demo",
+  "description": "Minimal Login with Raft demo app.",
+  "oauth": {
+    "redirectUris": [
+      "http://localhost:4173/auth/callback"
+    ],
+    "scopes": [
+      "openid",
+      "profile",
+      "identity"
+    ]
+  }
+}
+

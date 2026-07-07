@@ -1,0 +1,33 @@
+{
+  "id": "local-cli-wrapper",
+  "name": "Local CLI Wrapper",
+  "kind": "local-cli-wrapper",
+  "status": "v0",
+  "appType": "local_cli",
+  "conversationRole": "tool_api",
+  "capabilities": [
+    "manifest.discovery",
+    "cli.invoke",
+    "env.home_isolation",
+    "credential_handoff.file",
+    "stdout_json",
+    "stderr_passthrough",
+    "exit_code_passthrough"
+  ],
+  "negativeCapabilities": [
+    "messages.read",
+    "messages.send",
+    "browser_session",
+    "agent_facing_payload",
+    "custom_action_card"
+  ],
+  "authoritySources": [
+    "registration",
+    "grant",
+    "scope",
+    "review",
+    "runtime-permission"
+  ],
+  "manifest": "manifest.example.json",
+  "readme": "README.md"
+}

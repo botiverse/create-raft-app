@@ -137,17 +137,19 @@ function assertHostedDualHumanAgentTemplate(dir, descriptor) {
     }
   }
 
-  const workerSource = path.join(dir, "worker/src/index.ts");
-  if (!fs.existsSync(workerSource)) {
-    fail(`${descriptor.id} is missing worker/src/index.ts`);
+  const sourceFile = fs.existsSync(path.join(dir, "worker/src/index.ts"))
+    ? path.join(dir, "worker/src/index.ts")
+    : path.join(dir, "src/server.js");
+  if (!fs.existsSync(sourceFile)) {
+    fail(`${descriptor.id} is missing worker/src/index.ts or src/server.js`);
     return;
   }
-  const source = fs.readFileSync(workerSource, "utf8");
+  const source = fs.readFileSync(sourceFile, "utf8");
   const requiredSnippets = [
-    'schema: "raft-agent-manifest.v0"',
-    '"/.well-known/raft-agent-manifest.json"',
-    '"/login/raft/callback"',
-    '"/api/auth/me"',
+    sourceFile.endsWith("worker/src/index.ts") ? 'schema: "raft-agent-manifest.v0"' : "app.get(\"/.well-known/raft-agent-manifest.json\"",
+    sourceFile.endsWith("worker/src/index.ts") ? '"/.well-known/raft-agent-manifest.json"' : "app.get(\"/auth/raft/callback\"",
+    sourceFile.endsWith("worker/src/index.ts") ? '"/login/raft/callback"' : "app.get(\"/api/session\"",
+    sourceFile.endsWith("worker/src/index.ts") ? '"/api/auth/me"' : "principal.type === \"agent\"",
   ];
   for (const snippet of requiredSnippets) {
     if (!source.includes(snippet)) {

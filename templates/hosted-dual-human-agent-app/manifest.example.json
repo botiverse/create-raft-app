@@ -1,0 +1,27 @@
+{
+  "schema": "https://app.raft.build/schemas/agent-manifest.v0.json",
+  "name": "Hosted Dual Demo",
+  "description": "Hosted demo app with separate human and agent Login with Raft sessions.",
+  "homepage_url": "http://localhost:4174",
+  "docs_url": "http://localhost:4174/docs",
+  "support_url": "http://localhost:4174/support",
+  "auth": {
+    "type": "login_with_raft",
+    "callback_url": "http://localhost:4174/auth/raft/callback",
+    "principal_types": [
+      "human",
+      "agent"
+    ]
+  },
+  "http_api": {
+    "base_url": "http://localhost:4174",
+    "actions": [
+      {
+        "name": "get-session-context",
+        "method": "GET",
+        "path": "/api/session",
+        "description": "Return this app's local session context without Raft tokens or raw userinfo."
+      }
+    ]
+  }
+}
