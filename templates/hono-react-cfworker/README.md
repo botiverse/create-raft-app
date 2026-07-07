@@ -51,6 +51,8 @@ The generated routes expose:
 - `/api-docs`
 
 Fill in the OAuth exchange and product-specific routes before production use.
+Protected API routes intentionally fail closed until `worker/src/index.ts`
+verifies Raft sessions or agent Bearer tokens.
 
 ## Infrastructure
 

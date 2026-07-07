@@ -52,6 +52,7 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     const agentGuide = await readFile(path.join(appRoot, "docs/public/agent-guide.md"), "utf8");
     assert.match(agentGuide, /export MY_RAFT_APP_BEARER_TOKEN=/);
     assert.match(agentGuide, /raft-agent-manifest\.v0/);
+    assert.match(agentGuide, /Never accept arbitrary non-empty Bearer strings as authenticated/);
 
     const descriptor = JSON.parse(await readFile(path.join(appRoot, "raft-template.json"), "utf8"));
     assert.equal(descriptor.id, "hono-react-cfworker");
@@ -73,6 +74,11 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     assert.match(worker, /schema: "raft-agent-manifest\.v0"/);
     assert.match(worker, /"\/\.well-known\/raft-agent-manifest\.json"/);
     assert.match(worker, /"\/login-with-raft\/setup"/);
+    assert.match(worker, /resolvePrincipal/);
+    assert.match(worker, /protected API routes fail closed/);
+    assert.match(worker, /return authNotConfigured\(c\)/);
+    assert.doesNotMatch(worker, /access_token/);
+    assert.doesNotMatch(worker, /replace-with-real-token-exchange/);
     assert.doesNotMatch(worker, new RegExp("slo" + "ck", "i"));
     assert.doesNotMatch(worker, /__APP_NAME__/);
   } finally {
