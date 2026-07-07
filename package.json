@@ -1,6 +1,6 @@
 {
   "name": "create-raft-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Create Raft-native apps with Agent Login, OpenAPI, docs, and Cloudflare Workers templates.",
   "type": "module",
   "bin": {

@@ -110,6 +110,23 @@ test("lists every packaged template", async () => {
   }
 });
 
+test("lists templates as machine-readable JSON", async () => {
+  const result = await run(["--list-templates", "--json"], repoRoot);
+  const body = JSON.parse(result.stdout);
+  assert.equal(body.schemaVersion, "create-raft-app.templates.v1");
+  assert.equal(body.defaultTemplate, "hono-react-cfworker");
+  assert.deepEqual(body.templates.map((template) => template.name), templateNames);
+  for (const template of body.templates) {
+    assert.equal(typeof template.label, "string");
+    assert.equal(typeof template.description, "string");
+    assert.equal(Array.isArray(template.agentHandoff.files), true);
+    assert.equal(Array.isArray(template.agentHandoff.commands), true);
+    assert.equal(Array.isArray(template.agentHandoff.env), true);
+    assert.equal(Array.isArray(template.agentHandoff.urls), true);
+    assert.equal(Array.isArray(template.agentHandoff.registration), true);
+  }
+});
+
 test("test template list matches packaged template directories", async () => {
   const dirs = await readdir(path.join(repoRoot, "templates"), { withFileTypes: true });
   const packagedTemplateNames = dirs
@@ -140,6 +157,31 @@ test("interactive template prompt defaults to hono-react-cfworker", async () => 
     assert.match(result.stdout, /Created interactive-app from hono-react-cfworker/);
     const descriptor = JSON.parse(await readFile(path.join(tmp, "interactive-app/raft-template.json"), "utf8"));
     assert.equal(descriptor.id, "hono-react-cfworker");
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test("scaffold JSON result is stable and template-specific", async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
+  try {
+    const result = await run(
+      ["json-app", "--template", "hosted-dual-human-agent-app", "--yes", "--no-install", "--json"],
+      tmp,
+    );
+    const body = JSON.parse(result.stdout);
+    assert.equal(body.schemaVersion, "create-raft-app.scaffold-result.v1");
+    assert.equal(body.projectName, "json-app");
+    assert.equal(body.packageName, "json-app");
+    assert.equal(body.installed, false);
+    assert.equal(body.template.name, "hosted-dual-human-agent-app");
+    assert.equal(body.nextSteps.agentHandoffFiles.includes("AGENTS.md"), true);
+    assert.equal(body.nextSteps.env.includes("RAFT_CLIENT_ID"), true);
+    assert.equal(
+      body.nextSteps.urls.some((item) => item.url === "http://localhost:4174/.well-known/raft-agent-manifest.json"),
+      true,
+    );
+    assert.equal(existsSync(path.join(tmp, "json-app/AGENTS.md")), true);
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }
@@ -210,6 +252,7 @@ for (const templateName of templateNames) {
       assert.match(result.stdout, new RegExp(`Created ${projectName} from ${templateName}`));
 
       const appRoot = path.join(tmp, projectName);
+      assert.equal(existsSync(path.join(appRoot, "AGENTS.md")), true);
       assert.equal(existsSync(path.join(appRoot, "README.md")), true);
       assert.equal(existsSync(path.join(appRoot, "raft-template.json")), true);
 
@@ -219,6 +262,8 @@ for (const templateName of templateNames) {
 
       const descriptor = JSON.parse(await readFile(path.join(appRoot, "raft-template.json"), "utf8"));
       assert.equal(descriptor.id, templateName);
+      const agentGuide = await readFile(path.join(appRoot, "AGENTS.md"), "utf8");
+      assert.match(agentGuide, new RegExp(templateName));
       await assertNoGeneratedLegacyBranding(appRoot);
 
       await npm(["install", "--ignore-scripts"], appRoot);

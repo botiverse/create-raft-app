@@ -16,31 +16,105 @@ const templates = [
     name: "hono-react-cfworker",
     label: "Full Cloudflare Worker app",
     description: "Hono Worker API + React admin + Cloudflare Workers + Raft Agent Login + OpenAPI docs",
+    agentHandoff: {
+      files: ["AGENTS.md", "README.md", "docs/public/agent-guide.md", "raft-template.json"],
+      commands: ["npm run build", "npm run dev"],
+      env: ["RAFT_CLIENT_ID", "RAFT_CLIENT_SECRET", "RAFT_APP_ORIGIN", "RAFT_API_ORIGIN"],
+      urls: [
+        { label: "humanCallback", url: "http://localhost:8787/login/raft/callback" },
+        { label: "agentManifest", url: "http://localhost:8787/.well-known/raft-agent-manifest.json" },
+      ],
+      registration: [
+        "Register the deployed callback and manifest URLs before production use.",
+        "Implement real Raft OAuth exchange and agent-token verification before exposing protected APIs.",
+      ],
+    },
   },
   {
     name: "pure-sign-in-web-app",
     label: "Human sign-in only",
     description: "Login with Raft + userinfo/session only; no message access, actions, or agent payloads",
+    agentHandoff: {
+      files: ["AGENTS.md", "README.md", "raft-app-init.json", "raft-template.json"],
+      commands: ["npm run build", "npm start"],
+      env: ["RAFT_CLIENT_ID", "RAFT_CLIENT_SECRET", "RAFT_APP_ORIGIN", "RAFT_API_ORIGIN", "APP_ORIGIN", "SESSION_SECRET"],
+      urls: [{ label: "humanCallback", url: "http://localhost:4173/auth/callback" }],
+      registration: [
+        "Register an OAuth client with redirect URI http://localhost:4173/auth/callback.",
+        "This template is sign-in only; do not add agent/action scopes unless the app actually implements them.",
+      ],
+    },
   },
   {
     name: "local-cli-wrapper",
     label: "Local CLI integration",
     description: "Local CLI wrapper with isolated HOME/XDG state and service-owned credential handoff",
+    agentHandoff: {
+      files: ["AGENTS.md", "README.md", "manifest.example.json", "raft-template.json"],
+      commands: ["npm run build", "npm start", "npm run demo:write"],
+      env: ["RAFT_AGENT_ID", "RAFT_AGENT_HOME", "RAFT_AGENT_TOKEN_FILE", "RAFT_APP_ID"],
+      urls: [],
+      registration: [
+        "Register the wrapper command from manifest.example.json as a local CLI integration.",
+        "Pin the production command path and keep credentials in the runner-owned handoff path.",
+      ],
+    },
   },
   {
     name: "hosted-http-action-service",
     label: "Hosted HTTP actions",
     description: "Hosted manifest action service returning public action envelopes and structured errors",
+    agentHandoff: {
+      files: ["AGENTS.md", "README.md", "manifest.example.json", "raft-template.json"],
+      commands: ["npm run build", "npm start"],
+      env: ["APP_ORIGIN", "ACTION_BEARER_TOKEN"],
+      urls: [
+        { label: "actionManifest", url: "http://localhost:4181/.well-known/raft-app-manifest.json" },
+        { label: "demoAction", url: "http://localhost:4181/actions/summarize" },
+      ],
+      registration: [
+        "Register the manifest URL after deployment.",
+        "Replace the dev action bearer token with a reviewed service-owned credential before production use.",
+      ],
+    },
   },
   {
     name: "oauth-http-action-service",
     label: "OAuth + hosted actions",
     description: "OAuth + hosted manifest action service with service-local agent sessions",
+    agentHandoff: {
+      files: ["AGENTS.md", "README.md", "manifest.example.json", "raft-template.json"],
+      commands: ["npm run build", "npm start"],
+      env: ["RAFT_CLIENT_ID", "RAFT_CLIENT_SECRET", "RAFT_APP_ORIGIN", "RAFT_API_ORIGIN", "APP_ORIGIN", "SESSION_SECRET"],
+      urls: [
+        { label: "humanCallback", url: "http://localhost:4182/auth/callback" },
+        { label: "agentCallback", url: "http://localhost:4182/agent/callback" },
+        { label: "actionManifest", url: "http://localhost:4182/.well-known/raft-app-manifest.json" },
+      ],
+      registration: [
+        "Register both callback URLs and the action manifest URL.",
+        "Persist service-local agent sessions with expiry before production use.",
+      ],
+    },
   },
   {
     name: "hosted-dual-human-agent-app",
     label: "Hosted human + agent app",
     description: "Hosted app supporting browser human login and direct agent callback sessions",
+    agentHandoff: {
+      files: ["AGENTS.md", "README.md", "manifest.example.json", "raft-template.json"],
+      commands: ["npm run build", "npm start"],
+      env: ["RAFT_CLIENT_ID", "RAFT_CLIENT_SECRET", "RAFT_APP_ORIGIN", "RAFT_API_ORIGIN", "APP_ORIGIN", "SESSION_SECRET"],
+      urls: [
+        { label: "sharedCallback", url: "http://localhost:4174/auth/raft/callback" },
+        { label: "agentManifest", url: "http://localhost:4174/.well-known/raft-agent-manifest.json" },
+        { label: "sessionContext", url: "http://localhost:4174/api/session" },
+      ],
+      registration: [
+        "Register the callback URL and agent manifest URL.",
+        "Keep direct no-state callback acceptance restricted to agent principals.",
+      ],
+    },
   },
 ];
 
@@ -68,10 +142,28 @@ Options:
   --yes, -y           Use defaults for prompts
   --no-install        Do not run npm install after scaffolding
   --list-templates    Print available templates
+  --json              Print machine-readable JSON for template lists or scaffold results
   --help, -h          Show help
 
 Default template: ${defaultTemplate.name}
 `;
+}
+
+function templateForJson(template) {
+  return {
+    name: template.name,
+    label: template.label,
+    description: template.description,
+    agentHandoff: template.agentHandoff,
+  };
+}
+
+function templateListJson() {
+  return {
+    schemaVersion: "create-raft-app.templates.v1",
+    defaultTemplate: defaultTemplate.name,
+    templates: templates.map(templateForJson),
+  };
 }
 
 function parseArgs(argv) {
@@ -81,6 +173,7 @@ function parseArgs(argv) {
     yes: false,
     install: true,
     listTemplates: false,
+    json: false,
     help: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -95,6 +188,8 @@ function parseArgs(argv) {
       options.install = false;
     } else if (arg === "--list-templates") {
       options.listTemplates = true;
+    } else if (arg === "--json") {
+      options.json = true;
     } else if (arg === "--help" || arg === "-h") {
       options.help = true;
     } else if (!arg.startsWith("-") && !options.projectName) {
@@ -194,15 +289,46 @@ async function copyTemplate(source, destination, replacements) {
   }
 }
 
-function run(command, args, cwd) {
+function run(command, args, cwd, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, stdio: "inherit" });
+    const child = spawn(command, args, { cwd, stdio: options.stdio ?? "inherit" });
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();
       else reject(new Error(`${command} ${args.join(" ")} exited with ${code}`));
     });
   });
+}
+
+function scaffoldResult({ projectName, packageName, template, targetDir, installed }) {
+  return {
+    schemaVersion: "create-raft-app.scaffold-result.v1",
+    projectName,
+    packageName,
+    targetDir,
+    installed,
+    template: templateForJson(template),
+    nextSteps: {
+      commands: [`cd ${projectName}`, ...template.agentHandoff.commands],
+      agentHandoffFiles: template.agentHandoff.files,
+      env: template.agentHandoff.env,
+      urls: template.agentHandoff.urls,
+      registration: template.agentHandoff.registration,
+    },
+  };
+}
+
+function printHumanNextSteps(projectName, template) {
+  console.log(`\nNext steps:
+  cd ${projectName}
+${template.agentHandoff.commands.map((command) => `  ${command}`).join("\n")}
+
+Agent handoff:
+  Files: ${template.agentHandoff.files.join(", ")}
+  Env: ${template.agentHandoff.env.length > 0 ? template.agentHandoff.env.join(", ") : "none"}
+${template.agentHandoff.urls.length > 0 ? `  URLs:\n${template.agentHandoff.urls.map((item) => `    ${item.label}: ${item.url}`).join("\n")}\n` : ""}  Registration:
+${template.agentHandoff.registration.map((item) => `    - ${item}`).join("\n")}
+`);
 }
 
 async function main() {
@@ -212,6 +338,10 @@ async function main() {
     return;
   }
   if (options.listTemplates) {
+    if (options.json) {
+      console.log(JSON.stringify(templateListJson(), null, 2));
+      return;
+    }
     console.log("Available templates:");
     for (const [index, template] of templates.entries()) {
       console.log(formatTemplate(template, index));
@@ -248,19 +378,25 @@ async function main() {
       ENV_PREFIX: envPrefix,
     });
 
-    console.log(`\nCreated ${projectName} from ${template.name}.`);
-    console.log(template.description);
     if (options.install) {
-      console.log("\nInstalling dependencies with npm...");
-      await run("npm", ["install"], targetDir);
+      if (!options.json) {
+        console.log(`\nCreated ${projectName} from ${template.name}.`);
+        console.log(template.description);
+        console.log("\nInstalling dependencies with npm...");
+      }
+      await run("npm", ["install"], targetDir, {
+        stdio: options.json ? ["ignore", "ignore", "inherit"] : "inherit",
+      });
+    } else if (!options.json) {
+      console.log(`\nCreated ${projectName} from ${template.name}.`);
+      console.log(template.description);
     }
-    console.log(`\nNext steps:
-  cd ${projectName}
-  npm run build
-  npm run dev
-
-Configure Raft secrets and Worker vars before production deploy. See AGENTS.md and docs/public/agent-guide.md.
-`);
+    const result = scaffoldResult({ projectName, packageName, template, targetDir, installed: options.install });
+    if (options.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      printHumanNextSteps(projectName, template);
+    }
   } finally {
     rl.close();
   }
