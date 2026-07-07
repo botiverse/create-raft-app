@@ -90,4 +90,5 @@ jobs:
 
       - name: Publish to npm
         if: ${{ !inputs.dry_run }}
-        run: npm publish --access public --provenance
+        # npm provenance currently requires the GitHub source repository to be public.
+        run: npm publish --access public --provenance=false
