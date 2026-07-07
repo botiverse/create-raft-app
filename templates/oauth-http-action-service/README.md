@@ -71,11 +71,10 @@ The fixture uses HTTP Basic auth for token exchange by default because current R
 
 `agentSessions` is an in-memory fixture store. Production apps should persist service-local sessions, bind them to app/user/agent identity, set expiry, and clear them when the Raft grant or app install is revoked. Do not expose the raw Raft access token in the persisted session or any agent-visible response.
 
-## Checklists
+## Production Checklist
 
-- `../../contract/template-authoring.md`
-- `../../contract/compatibility-matrix.md`
-- `../../product-checklists/metadata.md`
-- `../../product-checklists/install-models.md`
-- `../../product-checklists/audit-events.md`
-- `../../product-checklists/review-lifecycle.md`
+- Register both human and agent callback URLs for the deployed origin.
+- Persist service-local agent sessions with expiry and revoke handling.
+- Keep raw Raft access and refresh tokens server-side only.
+- Validate action inputs, return public envelopes, and audit write-like actions.
+- Re-check scopes and marketplace review state before exposing the action service publicly.

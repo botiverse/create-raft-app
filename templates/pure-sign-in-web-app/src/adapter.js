@@ -10,4 +10,3 @@ export const template = {
     "custom_action_card"
   ]
 };
-

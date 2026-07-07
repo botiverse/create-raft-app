@@ -63,10 +63,9 @@ node src/wrapper.js -- <third-party-cli> <args>
 
 The manifest command is resolved relative to the registered integration working directory unless the registration layer pins an absolute executable path. The daemon or runner owns `PATH`, cwd, and per-agent `HOME`/XDG setup before invoking the wrapper. Template authors should avoid host-user global config paths and should make any production command path explicit during registration/review.
 
-## Checklists
+## Production Checklist
 
-- `../../contract/template-authoring.md`
-- `../../contract/compatibility-matrix.md`
-- `../../product-checklists/metadata.md`
-- `../../product-checklists/install-models.md`
-- `../../product-checklists/audit-events.md`
+- Pin the production command path during registration or review.
+- Run the wrapped CLI with per-agent `HOME` and XDG directories.
+- Keep service credentials in the runner-owned handoff path, not in the manifest or README.
+- Decide and document stdout, stderr, timeout, and exit-code handling before review.

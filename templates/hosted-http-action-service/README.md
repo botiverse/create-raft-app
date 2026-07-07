@@ -53,10 +53,9 @@ See `manifest.example.json`. The action endpoint is relative, auth is explicit, 
 
 The fixture validates bearer auth at the service boundary only. Server-side registration, grants, review state, and runtime permissions remain the Raft authority sources.
 
-## Checklists
+## Production Checklist
 
-- `../../contract/template-authoring.md`
-- `../../contract/compatibility-matrix.md`
-- `../../product-checklists/metadata.md`
-- `../../product-checklists/audit-events.md`
-- `../../product-checklists/review-lifecycle.md`
+- Keep action credentials out of manifests, README text, logs, and public payloads.
+- Validate all action inputs and return structured public envelopes.
+- Record audit events for writes and externally visible side effects.
+- Decide retry and idempotency behavior before review.

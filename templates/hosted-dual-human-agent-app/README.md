@@ -8,7 +8,7 @@ This fixture is based on a generic hosted human+agent app pattern: a human opens
 
 - Human browser Login with Raft through the setup page using a browser-session callback proof.
 - Agent direct callback without browser state, accepted only for agent principals.
-- `/.well-known/slock-agent-manifest.json` discovery with no private content or tokens.
+- `/.well-known/raft-agent-manifest.json` discovery with no private content or tokens.
 - `/api/session` returning local principal/context only.
 - Protected page and protected static route gating through the app layer.
 - Server/client verification before creating a local app session.
@@ -26,7 +26,7 @@ This fixture is based on a generic hosted human+agent app pattern: a human opens
 
 1. Copy `.env.example` to `.env`.
 2. Register a server-local app in Raft with return/callback URI `http://localhost:4174/auth/raft/callback`.
-3. Configure an agent manifest URL pointing at `http://localhost:4174/.well-known/slock-agent-manifest.json`.
+3. Configure an agent manifest URL pointing at `http://localhost:4174/.well-known/raft-agent-manifest.json`.
 4. Fill `RAFT_CLIENT_ID` and `RAFT_CLIENT_SECRET`.
 5. Confirm `RAFT_APP_ORIGIN`, `RAFT_SETUP_PATH`, and `RAFT_API_ORIGIN` match the Raft environment you registered against.
 6. Run:
@@ -38,9 +38,8 @@ npm start
 
 Open <http://localhost:4174>.
 
-`/.well-known/slock-agent-manifest.json` is the current Raft compatibility path for agent
-manifest discovery. A Raft-branded manifest alias can be added once the platform supports
-and tests it.
+`/.well-known/raft-agent-manifest.json` is the Raft-branded manifest path for agent
+discovery. Keep the manifest public and free of credentials.
 
 Private or server-local access control belongs to Raft registration, install, and grant
 state. This template intentionally does not hard-code a server allowlist inside the app.
@@ -87,13 +86,10 @@ If a production app keeps Raft access or refresh tokens for ongoing server-side 
 - fail closed when refresh fails, then require the human or agent to re-authorize;
 - never return retained tokens through `/api/session`, static pages, logs, or agent-visible context payloads.
 
-## Checklists
+## Production Checklist
 
-- `../../security-checklist.md`
-- `../../cutover-checklist.md`
-- `../../private-shared-checklist.md`
-- `../../product-checklists/metadata.md`
-- `../../product-checklists/install-models.md`
-- `../../product-checklists/ownership-boundaries.md`
-- `../../product-checklists/review-lifecycle.md`
-- `../../contract/compatibility-matrix.md`
+- Register the exact callback and manifest URLs for the deployed origin.
+- Verify server/client context before creating a local app session.
+- Keep raw Raft tokens and raw userinfo out of local session APIs, static pages, logs, and agent-visible payloads.
+- Decide whether the app is private, server-local, server-shared, or public marketplace before review.
+- Document ownership, support URL, privacy boundaries, and revoke behavior before deploying.
