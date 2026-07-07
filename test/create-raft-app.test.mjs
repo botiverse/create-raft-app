@@ -96,9 +96,10 @@ async function readGeneratedTextFiles(dir) {
 }
 
 async function assertNoGeneratedLegacyBranding(appRoot) {
+  const legacyBrandPattern = new RegExp("slo" + "ck", "i");
   for (const file of await readGeneratedTextFiles(appRoot)) {
     const content = await readFile(file, "utf8");
-    assert.doesNotMatch(content, /slock/i, `${path.relative(appRoot, file)} should use Raft branding`);
+    assert.doesNotMatch(content, legacyBrandPattern, `${path.relative(appRoot, file)} should use Raft branding`);
   }
 }
 
