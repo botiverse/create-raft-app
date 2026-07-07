@@ -19,7 +19,7 @@
       "tokenEndpointAuthMethod": "client_secret_basic"
     },
     "manifest": {
-      "url": "https://example.com/.well-known/slock-agent-manifest.json",
+      "url": "https://example.com/.well-known/raft-agent-manifest.json",
       "required": false
     }
   },

@@ -54,9 +54,9 @@ See `manifest.example.json`. The manifest advertises sign-in only and uses no ac
 
 `src/adapter.js` exposes the same capability set for conformance and docs. It is not an authority source.
 
-## Checklists
+## Production Checklist
 
-- `../../product-checklists/metadata.md`
-- `../../product-checklists/install-models.md`
-- `../../product-checklists/review-lifecycle.md`
-- `../../contract/compatibility-matrix.md`
+- Register the exact callback URL for the deployed origin.
+- Keep the client secret server-side only.
+- Store app sessions in a production session store with expiry.
+- Do not add message, action, or agent payload scopes unless the app actually implements and reviews them.

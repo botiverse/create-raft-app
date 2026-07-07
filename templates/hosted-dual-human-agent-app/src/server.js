@@ -134,7 +134,7 @@ function sendAgentManifest(_req, res) {
   res.type("application/json").sendFile(new URL("../manifest.example.json", import.meta.url).pathname);
 }
 
-app.get("/.well-known/slock-agent-manifest.json", sendAgentManifest);
+app.get("/.well-known/raft-agent-manifest.json", sendAgentManifest);
 
 app.get("/api/session", (req, res) => {
   const principal = req.session?.principal;

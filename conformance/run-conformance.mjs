@@ -146,7 +146,7 @@ function assertHostedDualHumanAgentTemplate(dir, descriptor) {
   }
   const source = fs.readFileSync(sourceFile, "utf8");
   const requiredSnippets = [
-    sourceFile.endsWith("worker/src/index.ts") ? 'schema: "raft-agent-manifest.v0"' : "app.get(\"/.well-known/slock-agent-manifest.json\"",
+    sourceFile.endsWith("worker/src/index.ts") ? 'schema: "raft-agent-manifest.v0"' : "app.get(\"/.well-known/raft-agent-manifest.json\"",
     sourceFile.endsWith("worker/src/index.ts") ? '"/.well-known/raft-agent-manifest.json"' : "app.get(\"/auth/raft/callback\"",
     sourceFile.endsWith("worker/src/index.ts") ? '"/login/raft/callback"' : "app.get(\"/api/session\"",
     sourceFile.endsWith("worker/src/index.ts") ? '"/api/auth/me"' : "principal.type === \"agent\"",
@@ -160,8 +160,7 @@ function assertHostedDualHumanAgentTemplate(dir, descriptor) {
   if (source.includes(`schema: "${legacyBrand}-agent-manifest.v0"`)) {
     fail(`${descriptor.id} must use raft-agent-manifest.v0, not the legacy manifest schema`);
   }
-  const sourceWithoutCompatibilityPath = source.replaceAll("/.well-known/slock-agent-manifest.json", "");
-  if (sourceWithoutCompatibilityPath.toLowerCase().includes(legacyBrand)) {
+  if (source.toLowerCase().includes(legacyBrand)) {
     fail(`${descriptor.id} worker source must not include legacy branding`);
   }
 }

@@ -65,6 +65,43 @@ function npm(args, cwd) {
   });
 }
 
+async function readGeneratedTextFiles(dir) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = [];
+  const textExtensions = new Set([
+    ".css",
+    ".html",
+    ".js",
+    ".json",
+    ".jsonc",
+    ".md",
+    ".mjs",
+    ".sql",
+    ".toml",
+    ".ts",
+    ".tsx",
+    ".txt",
+    ".yaml",
+    ".yml",
+  ]);
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await readGeneratedTextFiles(entryPath));
+    } else if (entry.isFile() && textExtensions.has(path.extname(entry.name))) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+async function assertNoGeneratedLegacyBranding(appRoot) {
+  for (const file of await readGeneratedTextFiles(appRoot)) {
+    const content = await readFile(file, "utf8");
+    assert.doesNotMatch(content, /slock/i, `${path.relative(appRoot, file)} should use Raft branding`);
+  }
+}
+
 test("lists every packaged template", async () => {
   const result = await run(["--list-templates"], repoRoot);
   assert.match(result.stdout, /^Available templates:/m);
@@ -182,6 +219,7 @@ for (const templateName of templateNames) {
 
       const descriptor = JSON.parse(await readFile(path.join(appRoot, "raft-template.json"), "utf8"));
       assert.equal(descriptor.id, templateName);
+      await assertNoGeneratedLegacyBranding(appRoot);
 
       await npm(["install", "--ignore-scripts"], appRoot);
       await npm(["run", "build"], appRoot);
