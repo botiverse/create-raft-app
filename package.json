@@ -4,7 +4,7 @@
   "description": "Create Raft-native apps with Agent Login, OpenAPI, docs, and Cloudflare Workers templates.",
   "type": "module",
   "bin": {
-    "create-raft-app": "./bin/create-raft-app.mjs"
+    "create-raft-app": "bin/create-raft-app.mjs"
   },
   "files": [
     "bin/",

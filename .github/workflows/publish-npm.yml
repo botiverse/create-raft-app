@@ -59,19 +59,34 @@ jobs:
       - name: Verify package contents
         run: npm pack --dry-run
 
+      - name: Check publish status
+        id: publish-status
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check version is not already published
         if: ${{ !inputs.dry_run }}
         run: |
           name="$(node -p "require('./package.json').name")"
           version="$(node -p "require('./package.json').version")"
-          if npm view "$name@$version" version >/dev/null 2>&1; then
+          if [ "${{ steps.publish-status.outputs.published }}" = "true" ]; then
             echo "$name@$version is already published; refusing to overwrite" >&2
             exit 1
           fi
 
       - name: Publish dry run
-        if: ${{ inputs.dry_run }}
+        if: ${{ inputs.dry_run && steps.publish-status.outputs.published == 'false' }}
         run: npm publish --access public --dry-run
+
+      - name: Already published dry run
+        if: ${{ inputs.dry_run && steps.publish-status.outputs.published == 'true' }}
+        run: echo "Package version is already published; npm pack --dry-run above verified package contents."
 
       - name: Publish to npm
         if: ${{ !inputs.dry_run }}
