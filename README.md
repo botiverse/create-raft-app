@@ -28,6 +28,12 @@ List templates without scaffolding:
 npm create raft-app@latest -- --list-templates
 ```
 
+List templates as stable JSON for agents:
+
+```bash
+npm create raft-app@latest -- --list-templates --json
+```
+
 Pass a template explicitly:
 
 ```bash
@@ -39,6 +45,18 @@ For non-interactive scaffolding:
 ```bash
 npm create raft-app@latest my-raft-app -- --template hono-react-cfworker --yes
 ```
+
+For non-interactive scaffolding with a machine-readable handoff:
+
+```bash
+npm create raft-app@latest my-raft-app -- --template hosted-dual-human-agent-app --yes --no-install --json
+```
+
+The JSON result includes the selected template, target directory, generated
+agent handoff files, required environment keys, callback or manifest URLs, and
+registration notes.
+When `--json` is used, stdout is reserved for the JSON payload so agents can
+parse it directly.
 
 Local development from this repo:
 
