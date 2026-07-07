@@ -44,7 +44,6 @@ Raft environments.
 The generated routes expose:
 
 - `/.well-known/raft-agent-manifest.json`
-- `/.well-known/slock-agent-manifest.json` (compat alias)
 - `/api/auth/login`
 - `/login/raft/callback`
 - `/api/auth/me`

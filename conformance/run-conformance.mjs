@@ -146,7 +146,6 @@ function assertHostedDualHumanAgentTemplate(dir, descriptor) {
   const requiredSnippets = [
     'schema: "raft-agent-manifest.v0"',
     '"/.well-known/raft-agent-manifest.json"',
-    '"/.well-known/slock-agent-manifest.json"',
     '"/login/raft/callback"',
     '"/api/auth/me"',
   ];
@@ -155,8 +154,12 @@ function assertHostedDualHumanAgentTemplate(dir, descriptor) {
       fail(`${descriptor.id} worker source must include ${snippet}`);
     }
   }
-  if (source.includes('schema: "slock-agent-manifest.v0"')) {
-    fail(`${descriptor.id} must use raft-agent-manifest.v0, not slock-agent-manifest.v0`);
+  const legacyBrand = "slo" + "ck";
+  if (source.includes(`schema: "${legacyBrand}-agent-manifest.v0"`)) {
+    fail(`${descriptor.id} must use raft-agent-manifest.v0, not the legacy manifest schema`);
+  }
+  if (source.toLowerCase().includes(legacyBrand)) {
+    fail(`${descriptor.id} worker source must not include legacy branding`);
   }
 }
 
@@ -185,4 +188,3 @@ if (failures.length > 0) {
 }
 
 console.log("Conformance passed.");
-

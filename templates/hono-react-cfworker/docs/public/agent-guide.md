@@ -22,8 +22,7 @@ curl -H "Authorization: Bearer $__ENV_PREFIX___BEARER_TOKEN" \
 ```
 
 The canonical manifest is `/.well-known/raft-agent-manifest.json` with schema
-`raft-agent-manifest.v0`. The generated Worker also serves
-`/.well-known/slock-agent-manifest.json` as a compatibility alias.
+`raft-agent-manifest.v0`.
 
 ## Rules
 
