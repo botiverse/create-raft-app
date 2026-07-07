@@ -25,7 +25,8 @@ Authorization: Bearer <token>
 ```
 
 Returns the current principal. In the generated template this is a minimal
-stub; replace it with real session lookup and role resolution.
+stub that returns `501` until you replace it with real session lookup and role
+resolution. Do not treat arbitrary Bearer strings as authenticated.
 
 ## OpenAPI
 

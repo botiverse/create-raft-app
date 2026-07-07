@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import type { Context } from "hono";
 
 type Bindings = {
   ASSETS?: Fetcher;
@@ -10,10 +11,22 @@ type Bindings = {
   RAFT_ORIGIN?: string;
   RAFT_API_ORIGIN?: string;
 };
+type AppContext = Context<{ Bindings: Bindings }>;
+type Principal = {
+  actor: string;
+  displayName: string;
+  principalType: "human" | "agent";
+};
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>();
 
 const ErrorResponse = z.object({ error: z.string() }).openapi("ErrorResponse");
+const PendingAuthResponse = z
+  .object({
+    error: z.string(),
+    next_step: z.string(),
+  })
+  .openapi("PendingAuthResponse");
 const HealthResponse = z.object({ ok: z.boolean(), service: z.string() }).openapi("HealthResponse");
 const EventInput = z
   .object({
@@ -46,6 +59,19 @@ function originFromRequest(c: { req: { url: string }; env: Bindings }) {
 function bearer(c: { req: { header(name: string): string | undefined } }) {
   const header = c.req.header("authorization") || "";
   return header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
+}
+
+async function resolvePrincipal(_token: string, _env: Bindings): Promise<Principal | null> {
+  // TODO: Verify Raft-issued agent tokens or app session cookies here.
+  // Until this is implemented, protected API routes fail closed.
+  return null;
+}
+
+function authNotConfigured(c: AppContext) {
+  return c.json({
+    error: "Raft auth is not implemented in this generated app yet.",
+    next_step: "Exchange the Raft callback code server-side, store an HttpOnly session for humans, and verify agent Bearer tokens before enabling protected APIs.",
+  }, 501);
 }
 
 function agentManifest(c: { req: { url: string }; env: Bindings }) {
@@ -97,19 +123,24 @@ app.openapi(
         description: "Missing Bearer token.",
         content: { "application/json": { schema: ErrorResponse } },
       },
+      501: {
+        description: "Generated app still needs real Raft session verification.",
+        content: { "application/json": { schema: PendingAuthResponse } },
+      },
     },
   }),
-  (c) => {
+  async (c) => {
     const token = bearer(c);
     if (!token) {
       return c.json({ error: "missing bearer token; use Login with Raft or Raft Agent Login" }, 401);
     }
-    // TODO: Replace this stub with session lookup and role resolution.
+    const principal = await resolvePrincipal(token, c.env);
+    if (!principal) return authNotConfigured(c);
     return c.json({
       ok: true as const,
       account: {
-        display_name: "Raft Agent",
-        principal_type: "agent" as const,
+        display_name: principal.displayName,
+        principal_type: principal.principalType,
       },
     }, 200);
   },
@@ -128,18 +159,10 @@ app.get("/login/raft/callback", (c) => {
   const code = c.req.query("code");
   if (!code) return c.json({ error: "missing code" }, 400);
   // TODO: Exchange the code server-side with the Raft API and set an
-  // HttpOnly browser cookie for humans, or return JSON for agent callbacks.
+  // HttpOnly browser cookie for humans, or verify and store an agent session.
   // RAFT_API_ORIGIN defaults to production Raft, with an override available for
   // non-production/self-hosted environments.
-  return c.json({
-    ok: true,
-    token_type: "Bearer",
-    access_token: "replace-with-real-token-exchange",
-    account: {
-      display_name: "Raft Agent",
-      principal_type: "agent",
-    },
-  });
+  return authNotConfigured(c);
 });
 
 app.openapi(
@@ -185,6 +208,10 @@ app.openapi(
         description: "Missing Bearer token.",
         content: { "application/json": { schema: ErrorResponse } },
       },
+      501: {
+        description: "Generated app still needs real Raft session verification.",
+        content: { "application/json": { schema: PendingAuthResponse } },
+      },
     },
   }),
   async (c) => {
@@ -192,6 +219,9 @@ app.openapi(
     if (!token) {
       return c.json({ error: "missing bearer token; use Login with Raft or Raft Agent Login" }, 401);
     }
+    const principal = await resolvePrincipal(token, c.env);
+    if (!principal) return authNotConfigured(c);
+
     const body = await c.req.json();
     const parsed = EventInput.parse(body);
     const id = crypto.randomUUID();
@@ -209,7 +239,7 @@ app.openapi(
       `INSERT INTO app_events (id, type, actor, payload_json, r2_key, created_at)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
     )
-      .bind(id, parsed.type, "agent", payloadJson, r2Key, now)
+      .bind(id, parsed.type, principal.actor, payloadJson, r2Key, now)
       .run();
 
     await c.env.APP_EVENTS.send({
