@@ -12,11 +12,23 @@ Raft, local CLI, HTTP action, OAuth action, and dual human/agent starters.
 
 Requires Node.js 20.19 or newer, or Node.js 22.12 or newer.
 
+Start the interactive scaffold:
+
 ```bash
 npm create raft-app@latest my-raft-app
 ```
 
-Choose a template when prompted, or pass it explicitly:
+The interactive prompt lists every packaged template. Press Enter at the
+template prompt to use the default `hono-react-cfworker` template, or choose by
+number/name.
+
+List templates without scaffolding:
+
+```bash
+npm create raft-app@latest -- --list-templates
+```
+
+Pass a template explicitly:
 
 ```bash
 npm create raft-app@latest my-raft-app -- --template hono-react-cfworker
@@ -42,6 +54,11 @@ npm create raft-app@latest -- --help
 
 ## Templates
 
+Use `hono-react-cfworker` for a full production-oriented Cloudflare Worker app.
+The other templates are smaller starting points for one integration shape. They
+preserve the same Raft template descriptor/conformance contract, but are not all
+Cloudflare Worker apps.
+
 | Name | Stack | Use |
 |---|---|---|
 | `hono-react-cfworker` | Hono Worker + React + Cloudflare Workers | Raft-native operational apps with browser console, Agent Login, OpenAPI, docs, and agent CLI conventions. |
@@ -51,9 +68,19 @@ npm create raft-app@latest -- --help
 | `oauth-http-action-service` | Express OAuth + action service | Login with Raft plus service-local agent session and HTTP action endpoint. |
 | `hosted-dual-human-agent-app` | Express hosted dual app | Browser human login and direct agent callback sessions in one hosted service. |
 
+Examples:
+
+```bash
+npm create raft-app@latest sign-in-demo -- --template pure-sign-in-web-app
+npm create raft-app@latest cli-wrapper-demo -- --template local-cli-wrapper
+npm create raft-app@latest action-demo -- --template hosted-http-action-service
+npm create raft-app@latest oauth-action-demo -- --template oauth-http-action-service
+npm create raft-app@latest dual-app-demo -- --template hosted-dual-human-agent-app
+```
+
 ## Generated app
 
-The generated project contains:
+The default `hono-react-cfworker` project contains:
 
 - `worker/` — Hono Worker API, Raft Agent Login manifest, `/api/auth/me`,
   generated `/openapi.json`, `/api-docs`, and D1/R2/Queue bindings.
@@ -62,8 +89,15 @@ The generated project contains:
 - `AGENTS.md` — repository entry point for AI agents.
 - `.github/workflows/ci.yml` — build validation for PRs.
 
-The template is a starting point. Fill in the Raft OAuth exchange and product
-domain routes before using it in production.
+The template is a starting point. Protected API routes intentionally fail closed
+until the app implements real Raft OAuth exchange, HttpOnly browser sessions,
+and agent Bearer-token verification. Fill in those auth paths and product
+domain routes before using a generated app in production.
+
+The smaller Express/Node templates include their own README files after
+scaffolding. Read the generated README before registering or deploying the app:
+each template has different callback URLs, environment variables, and production
+hardening notes.
 
 ## Publishing
 

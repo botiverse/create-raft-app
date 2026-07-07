@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -16,11 +16,11 @@ const templateNames = [
   "hosted-dual-human-agent-app",
 ];
 
-function run(args, cwd) {
+function run(args, cwd, input) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [path.join(repoRoot, "bin/create-raft-app.mjs"), ...args], {
       cwd,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";
     let stderr = "";
@@ -35,6 +35,11 @@ function run(args, cwd) {
       if (code === 0) resolve({ stdout, stderr });
       else reject(new Error(`exit ${code}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
     });
+    if (input !== undefined) {
+      child.stdin.end(input);
+    } else {
+      child.stdin.end();
+    }
   });
 }
 
@@ -62,8 +67,44 @@ function npm(args, cwd) {
 
 test("lists every packaged template", async () => {
   const result = await run(["--list-templates"], repoRoot);
+  assert.match(result.stdout, /^Available templates:/m);
   for (const templateName of templateNames) {
-    assert.match(result.stdout, new RegExp(`^${templateName}\\t`, "m"));
+    assert.match(result.stdout, new RegExp(`^\\d+\\. ${templateName} - `, "m"));
+  }
+});
+
+test("test template list matches packaged template directories", async () => {
+  const dirs = await readdir(path.join(repoRoot, "templates"), { withFileTypes: true });
+  const packagedTemplateNames = dirs
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  assert.deepEqual([...templateNames].sort(), packagedTemplateNames);
+});
+
+test("help documents template listing and default", async () => {
+  const result = await run(["--help"], repoRoot);
+  assert.match(result.stdout, /--list-templates\s+Print available templates/);
+  assert.match(result.stdout, /Default template: hono-react-cfworker/);
+});
+
+test("unknown template error lists available templates", async () => {
+  await assert.rejects(
+    () => run(["bad-app", "--template", "missing-template", "--yes", "--no-install"], repoRoot),
+    /Unknown template 'missing-template'.*hono-react-cfworker.*hosted-dual-human-agent-app/s,
+  );
+});
+
+test("interactive template prompt defaults to hono-react-cfworker", async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
+  try {
+    const result = await run(["interactive-app", "--no-install"], tmp, "\n");
+    assert.match(result.stdout, /Template name or number \[hono-react-cfworker\]:/);
+    assert.match(result.stdout, /Created interactive-app from hono-react-cfworker/);
+    const descriptor = JSON.parse(await readFile(path.join(tmp, "interactive-app/raft-template.json"), "utf8"));
+    assert.equal(descriptor.id, "hono-react-cfworker");
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
   }
 });
 

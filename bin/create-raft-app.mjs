@@ -14,43 +14,63 @@ const templatesRoot = path.join(root, "templates");
 const templates = [
   {
     name: "hono-react-cfworker",
+    label: "Full Cloudflare Worker app",
     description: "Hono Worker API + React admin + Cloudflare Workers + Raft Agent Login + OpenAPI docs",
   },
   {
     name: "pure-sign-in-web-app",
+    label: "Human sign-in only",
     description: "Login with Raft + userinfo/session only; no message access, actions, or agent payloads",
   },
   {
     name: "local-cli-wrapper",
+    label: "Local CLI integration",
     description: "Local CLI wrapper with isolated HOME/XDG state and service-owned credential handoff",
   },
   {
     name: "hosted-http-action-service",
+    label: "Hosted HTTP actions",
     description: "Hosted manifest action service returning public action envelopes and structured errors",
   },
   {
     name: "oauth-http-action-service",
+    label: "OAuth + hosted actions",
     description: "OAuth + hosted manifest action service with service-local agent sessions",
   },
   {
     name: "hosted-dual-human-agent-app",
+    label: "Hosted human + agent app",
     description: "Hosted app supporting browser human login and direct agent callback sessions",
   },
 ];
+
+const defaultTemplate = templates[0];
+
+function templateNames() {
+  return templates.map((template) => template.name).join(", ");
+}
+
+function formatTemplate(template, index) {
+  const prefix = typeof index === "number" ? `${index + 1}. ` : "";
+  return `${prefix}${template.name} - ${template.label}\n   ${template.description}`;
+}
 
 function usage() {
   return `create-raft-app
 
 Usage:
   npm create raft-app@latest <project-name>
-  npm create raft-app@latest <project-name> -- --template hono-react-cfworker
+  npm create raft-app@latest <project-name> -- --template ${defaultTemplate.name}
+  npm create raft-app@latest <project-name> -- --list-templates
 
 Options:
-  --template <name>   Template name. Available: ${templates.map((t) => t.name).join(", ")}
+  --template <name>   Template name. Available: ${templateNames()}
   --yes, -y           Use defaults for prompts
   --no-install        Do not run npm install after scaffolding
   --list-templates    Print available templates
   --help, -h          Show help
+
+Default template: ${defaultTemplate.name}
 `;
 }
 
@@ -117,10 +137,13 @@ async function promptForTemplate(rl) {
   }
   console.log("Available templates:");
   templates.forEach((template, index) => {
-    console.log(`  ${index + 1}. ${template.name} - ${template.description}`);
+    console.log(`  ${formatTemplate(template, index).replace("\n", "\n     ")}`);
   });
-  const answer = await rl.question("Template name or number: ");
+  const answer = await rl.question(`Template name or number [${defaultTemplate.name}]: `);
   const trimmed = answer.trim();
+  if (!trimmed) {
+    return defaultTemplate.name;
+  }
   const index = Number(trimmed);
   if (Number.isInteger(index) && index >= 1 && index <= templates.length) {
     return templates[index - 1].name;
@@ -189,8 +212,9 @@ async function main() {
     return;
   }
   if (options.listTemplates) {
-    for (const template of templates) {
-      console.log(`${template.name}\t${template.description}`);
+    console.log("Available templates:");
+    for (const [index, template] of templates.entries()) {
+      console.log(formatTemplate(template, index));
     }
     return;
   }
@@ -201,7 +225,7 @@ async function main() {
     const templateName = options.template || (options.yes ? templates[0].name : await promptForTemplate(rl));
     const template = templates.find((item) => item.name === templateName);
     if (!template) {
-      throw new Error(`Unknown template '${templateName}'. Use --list-templates to see available templates.`);
+      throw new Error(`Unknown template '${templateName}'. Available templates: ${templateNames()}`);
     }
 
     const targetDir = path.resolve(process.cwd(), projectName);
@@ -225,6 +249,7 @@ async function main() {
     });
 
     console.log(`\nCreated ${projectName} from ${template.name}.`);
+    console.log(template.description);
     if (options.install) {
       console.log("\nInstalling dependencies with npm...");
       await run("npm", ["install"], targetDir);
