@@ -16,6 +16,8 @@ This is a Raft-native Cloudflare app:
 
 ## Development
 
+Requires Node.js 20.19 or newer, or Node.js 22.12 or newer.
+
 ```bash
 npm install
 npm run dev
