@@ -20,10 +20,22 @@ Choose a template when prompted, or pass it explicitly:
 npm create raft-app@latest my-raft-app -- --template hono-react-cfworker
 ```
 
+For non-interactive scaffolding:
+
+```bash
+npm create raft-app@latest my-raft-app -- --template hono-react-cfworker --yes
+```
+
 Local development from this repo:
 
 ```bash
 node bin/create-raft-app.mjs my-raft-app --template hono-react-cfworker --no-install
+```
+
+To inspect the CLI options:
+
+```bash
+npm create raft-app@latest -- --help
 ```
 
 ## Templates
@@ -45,3 +57,19 @@ The generated project contains:
 
 The template is a starting point. Fill in the Raft OAuth exchange and product
 domain routes before using it in production.
+
+## Publishing
+
+The package is published as `create-raft-app` on npm. Publishing is handled by
+the manual GitHub Actions workflow `.github/workflows/publish-npm.yml`.
+
+Before publishing a new version:
+
+1. Update `package.json`.
+2. Run `npm test`.
+3. Run the `Publish npm package` workflow with `dry_run=true` and the expected
+   version.
+4. Re-run the same workflow with `dry_run=false` after the dry run passes.
+
+The publish workflow uses npm trusted publishing through GitHub Actions OIDC, so
+it does not require a long-lived npm token secret.
