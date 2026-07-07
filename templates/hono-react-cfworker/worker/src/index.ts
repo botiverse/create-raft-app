@@ -81,7 +81,6 @@ app.openapi(
 );
 
 app.get("/.well-known/raft-agent-manifest.json", (c) => c.json(agentManifest(c)));
-app.get("/.well-known/slock-agent-manifest.json", (c) => c.json(agentManifest(c)));
 
 app.openapi(
   createRoute({
@@ -119,7 +118,7 @@ app.openapi(
 app.get("/api/auth/login", (c) => {
   const origin = originFromRequest(c);
   const raftOrigin = c.env.RAFT_ORIGIN || "https://app.raft.build";
-  const setup = new URL("/login-with-slock/setup", raftOrigin);
+  const setup = new URL("/login-with-raft/setup", raftOrigin);
   setup.searchParams.set("client_id", c.env.RAFT_CLIENT_ID || "__PACKAGE_NAME__");
   setup.searchParams.set("redirect_uri", `${origin}/login/raft/callback`);
   return c.redirect(setup.toString());

@@ -50,6 +50,4 @@ with your product domain routes, but keep the binding shape.
 
 The canonical Agent Login manifest route is
 `/.well-known/raft-agent-manifest.json` with schema
-`raft-agent-manifest.v0`. The Worker also serves
-`/.well-known/slock-agent-manifest.json` as a compatibility alias for older
-platform clients.
+`raft-agent-manifest.v0`.

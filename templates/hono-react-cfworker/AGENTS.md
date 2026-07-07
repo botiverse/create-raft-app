@@ -25,8 +25,7 @@ This repo was generated from `create-raft-app` template `__TEMPLATE_NAME__`.
 - Browser auth uses Login with Raft.
 - Agents use Raft Agent Login and Bearer auth against `/api/*`.
 - `/.well-known/raft-agent-manifest.json` describes the service with
-  `raft-agent-manifest.v0`; `/.well-known/slock-agent-manifest.json` is kept
-  as a compatibility alias.
+  `raft-agent-manifest.v0`.
 - `/openapi.json` is generated from route definitions.
 - `/api-docs` renders the current API contract.
 - Cloudflare bindings are first-class: D1 for relational state, R2 for files,

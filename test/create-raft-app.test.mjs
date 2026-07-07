@@ -72,7 +72,8 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     assert.match(worker, /path: "\/api\/events"/);
     assert.match(worker, /schema: "raft-agent-manifest\.v0"/);
     assert.match(worker, /"\/\.well-known\/raft-agent-manifest\.json"/);
-    assert.match(worker, /"\/\.well-known\/slock-agent-manifest\.json"/);
+    assert.match(worker, /"\/login-with-raft\/setup"/);
+    assert.doesNotMatch(worker, new RegExp("slo" + "ck", "i"));
     assert.doesNotMatch(worker, /__APP_NAME__/);
   } finally {
     await rm(tmp, { recursive: true, force: true });
