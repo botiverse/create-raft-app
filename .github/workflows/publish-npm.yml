@@ -74,6 +74,6 @@ jobs:
 
       - name: Publish to npm
         if: ${{ !inputs.dry_run }}
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance=false
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
