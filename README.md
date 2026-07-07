@@ -2,9 +2,11 @@
 
 Create Raft-native apps from maintained templates.
 
-The first template is `hono-react-cfworker`: a Cloudflare Worker API using
+The default template is `hono-react-cfworker`: a Cloudflare Worker API using
 Hono, a React admin frontend, generated OpenAPI, public docs, `AGENTS.md`,
-and Raft/Agent Login integration points.
+and Raft/Agent Login integration points. The package also includes the base
+third-party app templates from `raft-app-templates` for smaller Login with
+Raft, local CLI, HTTP action, OAuth action, and dual human/agent starters.
 
 ## Usage
 
@@ -43,6 +45,11 @@ npm create raft-app@latest -- --help
 | Name | Stack | Use |
 |---|---|---|
 | `hono-react-cfworker` | Hono Worker + React + Cloudflare Workers | Raft-native operational apps with browser console, Agent Login, OpenAPI, docs, and agent CLI conventions. |
+| `pure-sign-in-web-app` | Express + Login with Raft | User sign-in and userinfo/session only; no message access, actions, or agent-facing payloads. |
+| `local-cli-wrapper` | Node local CLI wrapper | Isolate HOME/XDG state and service-owned credential handoff for a local third-party CLI. |
+| `hosted-http-action-service` | Express HTTP action service | Manifest-declared hosted actions with public action envelopes and structured errors. |
+| `oauth-http-action-service` | Express OAuth + action service | Login with Raft plus service-local agent session and HTTP action endpoint. |
+| `hosted-dual-human-agent-app` | Express hosted dual app | Browser human login and direct agent callback sessions in one hosted service. |
 
 ## Generated app
 

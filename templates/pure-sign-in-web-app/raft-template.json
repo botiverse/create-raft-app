@@ -1,0 +1,29 @@
+{
+  "id": "pure-sign-in-web-app",
+  "name": "Pure Sign-In Web App",
+  "kind": "pure-sign-in-web-app",
+  "status": "v0",
+  "appType": "web_app",
+  "conversationRole": "none",
+  "capabilities": [
+    "oauth.sign_in",
+    "oauth.userinfo",
+    "local.session"
+  ],
+  "negativeCapabilities": [
+    "messages.read",
+    "messages.send",
+    "manifest.actions",
+    "agent_facing_payload",
+    "custom_action_card"
+  ],
+  "authoritySources": [
+    "registration",
+    "grant",
+    "scope",
+    "review"
+  ],
+  "manifest": "manifest.example.json",
+  "readme": "README.md"
+}
+

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "v0",
+  "templateId": "pure-sign-in-web-app",
+  "prepareCommand": "raft integration app prepare register",
+  "commitModel": "owner_admin_action_card",
+  "registration": {
+    "name": "Pure Sign-In Demo",
+    "appType": "web_app",
+    "conversationRole": "none",
+    "oauth": {
+      "redirectUris": [
+        "http://localhost:4173/auth/callback"
+      ],
+      "scopes": [
+        "openid",
+        "profile",
+        "identity"
+      ],
+      "tokenEndpointAuthMethod": "client_secret_basic"
+    },
+    "manifest": {
+      "url": "https://example.com/.well-known/slock-agent-manifest.json",
+      "required": false
+    }
+  },
+  "security": {
+    "secretHandoff": "generated_by_owner_commit",
+    "agentMayLiveCreate": false,
+    "thirdPartyMayLiveCreate": false
+  }
+}

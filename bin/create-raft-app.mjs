@@ -16,6 +16,26 @@ const templates = [
     name: "hono-react-cfworker",
     description: "Hono Worker API + React admin + Cloudflare Workers + Raft Agent Login + OpenAPI docs",
   },
+  {
+    name: "pure-sign-in-web-app",
+    description: "Login with Raft + userinfo/session only; no message access, actions, or agent payloads",
+  },
+  {
+    name: "local-cli-wrapper",
+    description: "Local CLI wrapper with isolated HOME/XDG state and service-owned credential handoff",
+  },
+  {
+    name: "hosted-http-action-service",
+    description: "Hosted manifest action service returning public action envelopes and structured errors",
+  },
+  {
+    name: "oauth-http-action-service",
+    description: "OAuth + hosted manifest action service with service-local agent sessions",
+  },
+  {
+    name: "hosted-dual-human-agent-app",
+    description: "Hosted app supporting browser human login and direct agent callback sessions",
+  },
 ];
 
 function usage() {

@@ -1,0 +1,11 @@
+{
+  "name": "__PACKAGE_NAME__",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/wrapper.js -- node src/demo-cli.js status",
+    "demo:write": "node src/wrapper.js -- node src/demo-cli.js write hello-from-isolated-home",
+    "check": "node --check src/wrapper.js && node --check src/demo-cli.js && node --check src/adapter.js",
+    "build": "npm run check"
+  }
+}

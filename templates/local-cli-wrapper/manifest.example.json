@@ -1,0 +1,34 @@
+{
+  "name": "Local CLI Wrapper Demo",
+  "description": "Wraps a third-party CLI with per-agent home isolation and process passthrough semantics.",
+  "runtime": {
+    "kind": "local_cli",
+    "command": "node src/wrapper.js -- node src/demo-cli.js status",
+    "workingDirectory": ".",
+    "environmentIsolation": {
+      "home": "per-agent",
+      "xdgConfigHome": "per-agent",
+      "xdgDataHome": "per-agent"
+    }
+  },
+  "agentLogin": {
+    "credentialHandoff": "file",
+    "tokenFileEnv": "RAFT_AGENT_TOKEN_FILE"
+  },
+  "actions": [
+    {
+      "name": "status",
+      "command": "node src/wrapper.js -- node src/demo-cli.js status",
+      "stdout": "json",
+      "stderr": "diagnostic",
+      "exitCode": "passthrough"
+    },
+    {
+      "name": "write-demo-state",
+      "command": "node src/wrapper.js -- node src/demo-cli.js write <value>",
+      "stdout": "json",
+      "stderr": "diagnostic",
+      "exitCode": "passthrough"
+    }
+  ]
+}

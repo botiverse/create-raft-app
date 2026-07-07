@@ -7,6 +7,14 @@ import { spawn } from "node:child_process";
 import { test } from "node:test";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+const templateNames = [
+  "hono-react-cfworker",
+  "pure-sign-in-web-app",
+  "local-cli-wrapper",
+  "hosted-http-action-service",
+  "oauth-http-action-service",
+  "hosted-dual-human-agent-app",
+];
 
 function run(args, cwd) {
   return new Promise((resolve, reject) => {
@@ -29,6 +37,35 @@ function run(args, cwd) {
     });
   });
 }
+
+function npm(args, cwd) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("npm", args, {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error(`npm ${args.join(" ")} exit ${code}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+    });
+  });
+}
+
+test("lists every packaged template", async () => {
+  const result = await run(["--list-templates"], repoRoot);
+  for (const templateName of templateNames) {
+    assert.match(result.stdout, new RegExp(`^${templateName}\\t`, "m"));
+  }
+});
 
 test("scaffolds hono-react-cfworker template with replacements", async () => {
   const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
@@ -85,3 +122,30 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     await rm(tmp, { recursive: true, force: true });
   }
 });
+
+for (const templateName of templateNames) {
+  test(`scaffolds and builds ${templateName}`, async () => {
+    const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
+    try {
+      const projectName = `my-${templateName}`;
+      const result = await run([projectName, "--template", templateName, "--yes", "--no-install"], tmp);
+      assert.match(result.stdout, new RegExp(`Created ${projectName} from ${templateName}`));
+
+      const appRoot = path.join(tmp, projectName);
+      assert.equal(existsSync(path.join(appRoot, "README.md")), true);
+      assert.equal(existsSync(path.join(appRoot, "raft-template.json")), true);
+
+      const packageJson = JSON.parse(await readFile(path.join(appRoot, "package.json"), "utf8"));
+      assert.equal(packageJson.name, projectName);
+      assert.equal(typeof packageJson.scripts?.build, "string");
+
+      const descriptor = JSON.parse(await readFile(path.join(appRoot, "raft-template.json"), "utf8"));
+      assert.equal(descriptor.id, templateName);
+
+      await npm(["install", "--ignore-scripts"], appRoot);
+      await npm(["run", "build"], appRoot);
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  });
+}

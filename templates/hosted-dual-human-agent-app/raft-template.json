@@ -1,0 +1,35 @@
+{
+  "id": "hosted-dual-human-agent-app",
+  "name": "Hosted Dual Human + Agent App",
+  "kind": "hosted-dual-human-agent-app",
+  "status": "v0",
+  "appType": "hosted_dual_app",
+  "conversationRole": "tool_api",
+  "capabilities": [
+    "oauth.sign_in",
+    "oauth.userinfo",
+    "agent_login.direct_callback",
+    "agent_manifest.discovery",
+    "local.session",
+    "http_api.session_context",
+    "static.auth_gate"
+  ],
+  "negativeCapabilities": [
+    "messages.read",
+    "messages.send",
+    "agent_event.ingest",
+    "bot.sender",
+    "raw_userinfo.expose",
+    "token.expose",
+    "custom_action_card"
+  ],
+  "authoritySources": [
+    "registration",
+    "grant",
+    "scope",
+    "review",
+    "runtime-permission"
+  ],
+  "manifest": "manifest.example.json",
+  "readme": "README.md"
+}

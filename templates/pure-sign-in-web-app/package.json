@@ -1,0 +1,15 @@
+{
+  "name": "__PACKAGE_NAME__",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/server.js",
+    "build": "npm run check"
+  },
+  "dependencies": {
+    "cookie-session": "^2.1.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

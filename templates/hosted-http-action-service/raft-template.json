@@ -1,0 +1,32 @@
+{
+  "id": "hosted-http-action-service",
+  "name": "Hosted HTTP Action Service",
+  "kind": "hosted-http-action-service",
+  "status": "v0",
+  "appType": "http_api",
+  "conversationRole": "tool_api",
+  "capabilities": [
+    "manifest.discovery",
+    "manifest.actions",
+    "http.action.invoke",
+    "public_action_envelope",
+    "structured_errors",
+    "idempotency_key"
+  ],
+  "negativeCapabilities": [
+    "oauth.sign_in",
+    "messages.read",
+    "messages.send",
+    "agent_facing_payload",
+    "custom_action_card"
+  ],
+  "authoritySources": [
+    "registration",
+    "grant",
+    "scope",
+    "review",
+    "runtime-permission"
+  ],
+  "manifest": "manifest.example.json",
+  "readme": "README.md"
+}

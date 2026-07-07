@@ -1,0 +1,50 @@
+{
+  "name": "OAuth + HTTP Action Service Demo",
+  "description": "Login with Raft plus service-local agent session and HTTP action endpoint.",
+  "manifestVersion": "0.1",
+  "appType": "http_api_with_login",
+  "conversationRole": "tool_api",
+  "oauth": {
+    "setupUrl": "https://app.raft.build/login-with-raft/setup",
+    "tokenUrl": "https://api.raft.build/api/oauth/token",
+    "userinfoUrl": "https://api.raft.build/api/oauth/userinfo",
+    "redirectUris": [
+      "http://localhost:4182/auth/callback",
+      "http://localhost:4182/agent/callback"
+    ],
+    "scopes": [
+      "openid",
+      "profile",
+      "identity"
+    ]
+  },
+  "agentLogin": {
+    "callback": "http://localhost:4182/agent/callback",
+    "returns": "service-local-agent-session",
+    "rawRaftTokenExposure": false,
+    "revoke": {
+      "method": "DELETE",
+      "path": "/agent/session",
+      "auth": "service-local-agent-session"
+    }
+  },
+  "actions": [
+    {
+      "name": "create-demo-record",
+      "method": "POST",
+      "path": "/actions/create-demo-record",
+      "auth": {
+        "type": "service-local-agent-session"
+      },
+      "response": {
+        "envelope": "public_action_envelope"
+      }
+    }
+  ],
+  "unsupported": [
+    "messages.read",
+    "messages.send",
+    "custom_action_card",
+    "agent_facing_payload"
+  ]
+}
