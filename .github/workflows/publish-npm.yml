@@ -44,8 +44,9 @@ jobs:
 
       - name: Verify legacy branding is absent
         run: |
-          if grep -R -n -i --exclude-dir=.git --exclude=package-lock.json "slock" .; then
-            echo "legacy Slock branding must not be published" >&2
+          legacy_pattern='slo''ck'
+          if grep -R -n -i --exclude-dir=.git --exclude=package-lock.json "$legacy_pattern" .; then
+            echo "legacy branding must not be published" >&2
             exit 1
           fi
 
