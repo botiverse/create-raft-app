@@ -6,7 +6,8 @@ This is a Raft-native Cloudflare app:
 
 - `worker/` — Hono Worker API, Agent Login manifest, OpenAPI, API docs,
   and D1/R2/Queue bindings.
-- `admin/` — React admin frontend and static docs shell.
+- `admin/` — React 19 admin frontend (raft-ui "elegant" + Tailwind v4) and
+  static docs shell.
 - `docs/public/` — public docs rendered into the admin assets.
 - `AGENTS.md` — first-page guide for AI agents working in this repo.
 - `raft-template.json` — Raft template descriptor aligned with the
