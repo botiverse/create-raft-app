@@ -86,8 +86,11 @@ function layout(title, body) {
     a { color: #0369a1; text-decoration: none; }
     .panel { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 28px; }
     p { color: #475569; line-height: 1.7; }
-    code { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1px 4px; }
-    pre { overflow: auto; background: #020617; color: #dbeafe; padding: 16px; border-radius: 8px; }
+    code { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1px 4px; font-size: 0.9em; }
+    pre { overflow: auto; background: #020617; color: #e2e8f0; padding: 16px; border-radius: 8px; }
+    /* Inside a code block, the inline-code chrome (light bg) makes text
+       unreadable on the dark pre; reset it so it inherits the light pre color. */
+    pre code { background: transparent; border: 0; padding: 0; color: inherit; font-size: inherit; }
   </style>
 </head>
 <body>
