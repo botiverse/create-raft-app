@@ -233,9 +233,13 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     assert.match(worker, /"\/\.well-known\/raft-agent-manifest\.json"/);
     assert.match(worker, /"\/login-with-raft\/setup"/);
     assert.match(worker, /resolvePrincipal/);
-    assert.match(worker, /protected API routes fail closed/);
+    // Working Login-with-Raft: verifies tokens via userinfo, uses the correct
+    // return_to param (not redirect_uri), and exchanges the code for a token.
+    assert.match(worker, /api\/oauth\/userinfo/);
+    assert.match(worker, /return_to/);
+    assert.doesNotMatch(worker, /redirect_uri/);
+    assert.match(worker, /access_token/);
     assert.match(worker, /return authNotConfigured\(c\)/);
-    assert.doesNotMatch(worker, /access_token/);
     assert.doesNotMatch(worker, /replace-with-real-token-exchange/);
     assert.doesNotMatch(worker, new RegExp("slo" + "ck", "i"));
     assert.doesNotMatch(worker, /__APP_NAME__/);

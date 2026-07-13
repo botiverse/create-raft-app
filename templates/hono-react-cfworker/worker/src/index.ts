@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import type { Context } from "hono";
+import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 
 type Bindings = {
   ASSETS?: Fetcher;
@@ -8,10 +9,19 @@ type Bindings = {
   APP_EVENTS: Queue;
   APP_ORIGIN?: string;
   RAFT_CLIENT_ID?: string;
+  // Set via `wrangler secret put RAFT_CLIENT_SECRET` after registering the app
+  // with Raft. Required only for the human Login-with-Raft code exchange; agent
+  // Bearer verification works without it.
+  RAFT_CLIENT_SECRET?: string;
   RAFT_ORIGIN?: string;
   RAFT_API_ORIGIN?: string;
 };
 type AppContext = Context<{ Bindings: Bindings }>;
+
+// Session cookie carrying the Raft access token. Set at the Login-with-Raft /
+// agent-login callback; the raft CLI's agent login stores and replays it.
+const SESSION_COOKIE = "raft_session";
+const LOGIN_PENDING_COOKIE = "raft_login_pending";
 type Principal = {
   actor: string;
   displayName: string;
@@ -61,16 +71,72 @@ function bearer(c: { req: { header(name: string): string | undefined } }) {
   return header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
 }
 
-async function resolvePrincipal(_token: string, _env: Bindings): Promise<Principal | null> {
-  // TODO: Verify Raft-issued agent tokens or app session cookies here.
-  // Until this is implemented, protected API routes fail closed.
-  return null;
+// A caller's token: Authorization: Bearer (agents/CLIs) or the session cookie
+// set at the callback (browsers, and the raft CLI which replays a Set-Cookie).
+function sessionToken(c: AppContext): string {
+  return bearer(c) || getCookie(c, SESSION_COOKIE) || "";
+}
+
+// Verify a token against Raft's userinfo endpoint. Works for any valid Raft
+// access token (agent or human) — no per-app secret required.
+async function resolvePrincipal(token: string, env: Bindings): Promise<Principal | null> {
+  if (!token) return null;
+  const apiOrigin = env.RAFT_API_ORIGIN || "https://api.raft.build";
+  try {
+    const res = await fetch(`${apiOrigin}/api/oauth/userinfo`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const info = (await res.json()) as {
+      sub?: string;
+      type?: string;
+      name?: string;
+      preferred_username?: string;
+      server_slug?: string;
+      server_id?: string;
+    };
+    if (!info.sub) return null;
+    const handle = info.preferred_username || info.name || info.sub;
+    const server = info.server_slug || info.server_id || "raft";
+    return {
+      actor: `raft:${handle}@${server}`,
+      displayName: info.name || info.preferred_username || "Raft user",
+      principalType: info.type === "agent" ? "agent" : "human",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Clear a session cookie whose token no longer verifies, so a stale/expired
+// cookie can't wedge the app into a permanent 401.
+function clearStaleSessionCookie(c: AppContext) {
+  if (getCookie(c, SESSION_COOKIE)) deleteCookie(c, SESSION_COOKIE, { path: "/" });
+}
+
+// Exchange a Login-with-Raft authorization code for an access token. Requires
+// RAFT_CLIENT_SECRET (set after registering the app with Raft).
+async function exchangeRaftCode(
+  env: Bindings,
+  code: string,
+): Promise<{ access_token: string; expires_in?: number } | null> {
+  if (!env.RAFT_CLIENT_SECRET) return null;
+  const apiOrigin = env.RAFT_API_ORIGIN || "https://api.raft.build";
+  const clientId = env.RAFT_CLIENT_ID || "app";
+  const basic = btoa(`${clientId}:${env.RAFT_CLIENT_SECRET}`);
+  const res = await fetch(`${apiOrigin}/api/oauth/token`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Basic ${basic}` },
+    body: JSON.stringify({ grant_type: "authorization_code", code }),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as { access_token: string; expires_in?: number };
 }
 
 function authNotConfigured(c: AppContext) {
   return c.json({
-    error: "Raft auth is not implemented in this generated app yet.",
-    next_step: "Exchange the Raft callback code server-side, store an HttpOnly session for humans, and verify agent Bearer tokens before enabling protected APIs.",
+    error: "Login with Raft is not configured yet.",
+    next_step: "Register this app with Raft, then set RAFT_CLIENT_SECRET (`wrangler secret put RAFT_CLIENT_SECRET`) and RAFT_CLIENT_ID so the callback can exchange the code. Agent Bearer auth already works.",
   }, 501);
 }
 
@@ -130,12 +196,15 @@ app.openapi(
     },
   }),
   async (c) => {
-    const token = bearer(c);
+    const token = sessionToken(c);
     if (!token) {
       return c.json({ error: "missing bearer token; use Login with Raft or Raft Agent Login" }, 401);
     }
     const principal = await resolvePrincipal(token, c.env);
-    if (!principal) return authNotConfigured(c);
+    if (!principal) {
+      clearStaleSessionCookie(c);
+      return c.json({ error: "invalid or unverifiable Raft token" }, 401);
+    }
     return c.json({
       ok: true as const,
       account: {
@@ -146,23 +215,69 @@ app.openapi(
   },
 );
 
+function callbackUrl(c: AppContext) {
+  return `${originFromRequest(c)}/login/raft/callback`;
+}
+
 app.get("/api/auth/login", (c) => {
-  const origin = originFromRequest(c);
   const raftOrigin = c.env.RAFT_ORIGIN || "https://app.raft.build";
+  // Mark a pending browser login so the callback can tell humans (redirect back)
+  // from agents (return JSON) apart.
+  setCookie(c, LOGIN_PENDING_COOKIE, crypto.randomUUID(), {
+    httpOnly: true,
+    secure: true,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 600,
+  });
   const setup = new URL("/login-with-raft/setup", raftOrigin);
   setup.searchParams.set("client_id", c.env.RAFT_CLIENT_ID || "__PACKAGE_NAME__");
-  setup.searchParams.set("redirect_uri", `${origin}/login/raft/callback`);
-  return c.redirect(setup.toString());
+  setup.searchParams.set("return_to", callbackUrl(c));
+  setup.searchParams.set("scope", "openid profile");
+  return c.redirect(setup.toString(), 302);
 });
 
-app.get("/login/raft/callback", (c) => {
+app.get("/login/raft/callback", async (c) => {
   const code = c.req.query("code");
   if (!code) return c.json({ error: "missing code" }, 400);
-  // TODO: Exchange the code server-side with the Raft API and set an
-  // HttpOnly browser cookie for humans, or verify and store an agent session.
-  // RAFT_API_ORIGIN defaults to production Raft, with an override available for
-  // non-production/self-hosted environments.
-  return authNotConfigured(c);
+  const hadPendingBrowserLogin = Boolean(getCookie(c, LOGIN_PENDING_COOKIE));
+  deleteCookie(c, LOGIN_PENDING_COOKIE, { path: "/" });
+
+  // Requires RAFT_CLIENT_SECRET + a registered app. Agent Bearer auth works
+  // without this; only the human browser exchange needs it.
+  const token = await exchangeRaftCode(c.env, code);
+  if (!token?.access_token) {
+    return authNotConfigured(c);
+  }
+  const principal = await resolvePrincipal(token.access_token, c.env);
+  if (!principal) {
+    return c.json({ error: "could not verify Raft identity after exchange" }, 502);
+  }
+
+  // Session cookie carries the Raft access token; every request re-verifies it
+  // via userinfo (stateless — no session table).
+  const maxAge = token.expires_in && token.expires_in > 0 ? token.expires_in : 3600;
+  setCookie(c, SESSION_COOKIE, token.access_token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "Lax",
+    path: "/",
+    maxAge,
+  });
+  c.header("cache-control", "no-store");
+
+  if (hadPendingBrowserLogin) {
+    return c.redirect("/", 302);
+  }
+  // Agent login (raft integration login): return the token + identity as JSON.
+  return c.json({
+    access_token: token.access_token,
+    expires_in: maxAge,
+    account: {
+      display_name: principal.displayName,
+      principal_type: principal.principalType,
+    },
+  });
 });
 
 app.openapi(
@@ -215,12 +330,15 @@ app.openapi(
     },
   }),
   async (c) => {
-    const token = bearer(c);
+    const token = sessionToken(c);
     if (!token) {
       return c.json({ error: "missing bearer token; use Login with Raft or Raft Agent Login" }, 401);
     }
     const principal = await resolvePrincipal(token, c.env);
-    if (!principal) return authNotConfigured(c);
+    if (!principal) {
+      clearStaleSessionCookie(c);
+      return c.json({ error: "invalid or unverifiable Raft token" }, 401);
+    }
 
     const body = await c.req.json();
     const parsed = EventInput.parse(body);

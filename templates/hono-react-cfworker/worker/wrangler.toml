@@ -7,6 +7,11 @@ compatibility_flags = ["nodejs_compat"]
 directory = "../admin/dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+# Run the Worker first so API/auth routes are handled by it. Without this, CF's
+# SPA not_found_handling serves index.html for browser document navigations
+# (Sec-Fetch-Dest: document) to Worker paths like /api/auth/login, shadowing the
+# route. The Worker's notFound falls back to ASSETS for real static paths.
+run_worker_first = true
 
 [observability]
 enabled = true
