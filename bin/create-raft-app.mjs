@@ -26,7 +26,7 @@ const templates = [
       ],
       registration: [
         "Register the deployed callback and manifest URLs before production use.",
-        "Implement real Raft OAuth exchange and agent-token verification before exposing protected APIs.",
+        "Set RAFT_CLIENT_SECRET (wrangler secret put) and RAFT_CLIENT_ID after registering the app to enable human Login with Raft; agent Bearer verification works without it.",
       ],
     },
   },

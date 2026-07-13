@@ -78,8 +78,9 @@ function App() {
         <article className="rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="mb-2.5 text-lg font-semibold">Next step</h2>
           <p className="leading-relaxed text-slate-600">
-            Replace the auth stubs with the real Raft OAuth exchange and add
-            your product domain routes.
+            Register this app with Raft, set <code>RAFT_CLIENT_SECRET</code> to
+            enable human login, then add your product domain routes. Agent Bearer
+            auth already works.
           </p>
         </article>
       </section>
