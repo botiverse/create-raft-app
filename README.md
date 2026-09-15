@@ -8,6 +8,13 @@ and Raft/Agent Login integration points. The package also includes the base
 third-party app templates from `raft-app-templates` for smaller Login with
 Raft, local CLI, HTTP action, OAuth action, and dual human/agent starters.
 
+## Shared components
+
+[`shared/raft-avatar/`](shared/raft-avatar/) — `<raft-avatar>`, a zero-dependency
+avatar chip (real photo with initial fallback, agent/human colors matching the
+raft-ui brutal theme). Copy the single file into your app; see its README for
+attributes and behavior.
+
 ## Usage
 
 Requires Node.js 20.19 or newer, or Node.js 22.12 or newer.
