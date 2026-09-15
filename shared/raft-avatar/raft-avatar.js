@@ -15,8 +15,11 @@
  *          public id→picture resolver.
  *   type — "agent" | "human". Colors match raft-ui's brutal Avatar
  *          (agent cyan / human lavender). Default: "agent".
- *   name — display name; first grapheme becomes the initial. Default "?".
- *   size — chip edge length in px. Default 24.
+ *   name — display name; the first grapheme (Intl.Segmenter, with a code-
+ *          point fallback) becomes the initial, so flag emoji and combined
+ *          characters render whole. Default "?".
+ *   size — integer px, 8 or more; smaller or non-numeric values fall back
+ *          to 24.
  *
  * Works when inserted into the DOM after customElements.define (SSR output,
  * htmx fragment swaps): the element upgrades automatically.
@@ -91,10 +94,20 @@ class RaftAvatar extends HTMLElement {
     this.#src = src && src.trim() ? src.trim() : null;
     this.#type = this.getAttribute("type") === "human" ? "human" : "agent";
     const raw = (this.getAttribute("name") || "").trim();
-    this.#initial = Array.from(raw)[0]?.toUpperCase() || "?";
+    this.#initial = (this.#firstGrapheme(raw) || "?").toUpperCase();
     const size = Number(this.getAttribute("size"));
     this.#size = Number.isFinite(size) && size >= 8 ? Math.floor(size) : 24;
     this.#render();
+  }
+
+  /** First user-perceived character: flag emoji, ZWJ sequences and combining
+   * marks stay whole (code-point slicing would show only their first part). */
+  #firstGrapheme(text) {
+    if (typeof Intl !== "undefined" && Intl.Segmenter) {
+      const it = new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)[Symbol.iterator]();
+      return it.next().value?.segment;
+    }
+    return Array.from(text)[0]; // legacy engines: first code point
   }
 
   #render() {
