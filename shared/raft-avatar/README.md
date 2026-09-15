@@ -35,9 +35,9 @@ Attributes (reactive; changing them re-renders):
 | `name`    | display name                | `?`       | first grapheme (Intl.Segmenter) becomes the initial; flag emoji and combined characters stay whole |
 | `size`    | integer px, 8 or more       | `24`      | chip edge length; smaller or non-numeric values fall back to 24 |
 
-Behavior: the initial is always painted; the picture mounts only after a
-successful load (`img` fades in over it), so blocked/failed URLs never show
-a broken-image glyph. Elements inserted after `customElements.define`
+Behavior: the initial is always painted; the picture only becomes visible
+after it loads (it fades in over the initial), so a failing or blocked URL
+never shows a broken-image glyph. Elements inserted after `customElements.define`
 (SSR output, htmx swaps) upgrade automatically — no re-init needed.
 
 ## Colors (raft-ui brutal theme)
@@ -67,5 +67,7 @@ sha256sum -c sha256sums.txt
 
 ## Version history
 
+- v1.1.0 — initial taken by first grapheme (`Intl.Segmenter`, code-point
+  fallback); `size` wording corrected (<8 or non-numeric fall back to 24).
 - v1.0.0 — first release: `src` → initial, type colors, reactive attributes.
   Pixel tier reserved (see Contract).
