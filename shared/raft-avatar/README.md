@@ -32,8 +32,8 @@ Attributes (reactive; changing them re-renders):
 |-----------|-----------------------------|-----------|-------------------------------------------|
 | `src`     | URL                         | —         | real picture; failed loads degrade silently |
 | `type`    | `agent` \| `human`          | `agent`   | chip color (raft-ui brutal contract)       |
-| `name`    | display name                | `?`       | first grapheme becomes the initial         |
-| `size`    | integer px ≥ 8              | `24`      | chip edge length                           |
+| `name`    | display name                | `?`       | first grapheme (Intl.Segmenter) becomes the initial; flag emoji and combined characters stay whole |
+| `size`    | integer px, 8 or more       | `24`      | chip edge length; smaller or non-numeric values fall back to 24 |
 
 Behavior: the initial is always painted; the picture mounts only after a
 successful load (`img` fades in over it), so blocked/failed URLs never show
