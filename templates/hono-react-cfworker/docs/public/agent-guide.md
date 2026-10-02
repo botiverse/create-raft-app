@@ -14,15 +14,20 @@ raft integration login --service __PACKAGE_NAME__
 If the service is registered as an HTTP API service, `integration invoke` may
 show no actions. That is expected.
 
-The generated app fails closed until you implement the Raft callback exchange
-and Bearer token verification in `worker/src/index.ts`. After that is wired,
-agents can call protected APIs with their verified service token:
+The generated app fails closed until the Raft callback exchange is configured
+(`RAFT_CLIENT_ID` and `RAFT_CLIENT_SECRET`). After that, `raft integration login`
+opens the callback without browser state; the app accepts it only because Raft
+says the principal is an Agent, and answers with a session cookie. The Raft CLI
+keeps that cookie and replays it to the actions the manifest declares:
 
 ```bash
-export __ENV_PREFIX___BEARER_TOKEN=<access_token>
-curl -H "Authorization: Bearer $__ENV_PREFIX___BEARER_TOKEN" \
-  https://your-app.example.com/api/auth/me
+raft integration invoke __PACKAGE_NAME__ <action>
 ```
+
+Declare an action in the manifest for each operation agents should perform. No
+token is ever printed or pasted: the callback never returns one in its body.
+Bearer credentials are accepted only if Raft issued them to this app (userinfo
+`client_id`).
 
 The canonical manifest is `/.well-known/raft-agent-manifest.json` with schema
 `raft-agent-manifest.v0`.

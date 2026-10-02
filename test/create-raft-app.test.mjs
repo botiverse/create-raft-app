@@ -208,7 +208,10 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     assert.equal(packageJson.scripts.build, "npm run build:admin && npm run build:worker");
 
     const agentGuide = await readFile(path.join(appRoot, "docs/public/agent-guide.md"), "utf8");
-    assert.match(agentGuide, /export MY_RAFT_APP_BEARER_TOKEN=/);
+    // Agents use the service session through manifest actions; no token pasting.
+    assert.match(agentGuide, /raft integration invoke my-raft-app/);
+    assert.doesNotMatch(agentGuide, /BEARER_TOKEN=<access_token>/);
+    assert.doesNotMatch(agentGuide, /__[A-Z_]+__/);
     assert.match(agentGuide, /raft-agent-manifest\.v0/);
     assert.match(agentGuide, /Never accept arbitrary non-empty Bearer strings as authenticated/);
 
@@ -240,6 +243,13 @@ test("scaffolds hono-react-cfworker template with replacements", async () => {
     assert.doesNotMatch(worker, /redirect_uri/);
     assert.match(worker, /access_token/);
     assert.match(worker, /return authNotConfigured\(c\)/);
+    // Only tokens issued to this app count (userinfo client_id), a state-less
+    // callback is accepted only for an Agent, and no token leaves in a body.
+    assert.match(worker, /info\.client_id !== env\.RAFT_CLIENT_ID/);
+    assert.match(worker, /principal\.principalType !== "agent"/);
+    assert.match(worker, /LOGIN_STATE_REQUIRED/);
+    assert.match(worker, /409\)/);
+    assert.doesNotMatch(worker, /c\.json\(\{\s*access_token/);
     assert.doesNotMatch(worker, /replace-with-real-token-exchange/);
     assert.doesNotMatch(worker, new RegExp("slo" + "ck", "i"));
     assert.doesNotMatch(worker, /__APP_NAME__/);

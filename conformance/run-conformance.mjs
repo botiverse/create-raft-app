@@ -150,6 +150,9 @@ function assertHostedDualHumanAgentTemplate(dir, descriptor) {
     sourceFile.endsWith("worker/src/index.ts") ? '"/.well-known/raft-agent-manifest.json"' : "app.get(\"/auth/raft/callback\"",
     sourceFile.endsWith("worker/src/index.ts") ? '"/login/raft/callback"' : "app.get(\"/api/session\"",
     sourceFile.endsWith("worker/src/index.ts") ? '"/api/auth/me"' : "principal.type === \"agent\"",
+    ...(sourceFile.endsWith("worker/src/index.ts")
+      ? ['principal.principalType !== "agent"', "info.client_id !== env.RAFT_CLIENT_ID"]
+      : []),
   ];
   for (const snippet of requiredSnippets) {
     if (!source.includes(snippet)) {
