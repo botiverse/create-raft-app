@@ -3,9 +3,8 @@
 This synthetic App renders `/pr/<number>` links for an explicit viewer allowlist.
 It is a complete callback example, not an integration with real PR data.
 
-Availability: the platform capability is merged in Raft staging PR #10243;
-production availability is not yet verified. Test against a deployment containing
-that change. This repository example is not an npm scaffold template.
+Link previews are currently available only in test environments, not in the
+production service. This repository example is not an npm scaffold template.
 
 Run with Node 24+, behind your HTTPS reverse proxy on a domain you control:
 
