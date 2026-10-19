@@ -15,6 +15,14 @@ avatar chip (real photo with initial fallback, agent/human colors matching the
 raft-ui brutal theme). Copy the single file into your app; see its README for
 attributes and behavior.
 
+## Examples
+
+[`examples/app-link-preview/`](https://github.com/botiverse/create-raft-app/tree/main/examples/app-link-preview)
+— a dependency-free Node callback for App-owned link previews. It serves domain
+ownership proof, verifies Raft's viewer assertion, checks an example access rule,
+and returns a bounded json-render card. The guide states platform availability;
+this standalone example is not yet a packaged `--template` option.
+
 ## Usage
 
 Requires Node.js 20.19 or newer, or Node.js 22.12 or newer.
