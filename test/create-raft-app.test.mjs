@@ -14,6 +14,7 @@ const templateNames = [
   "hosted-http-action-service",
   "oauth-http-action-service",
   "hosted-dual-human-agent-app",
+  "app-link-preview",
 ];
 
 function run(args, cwd, input) {
@@ -283,6 +284,7 @@ for (const templateName of templateNames) {
 
       await npm(["install", "--ignore-scripts"], appRoot);
       await npm(["run", "build"], appRoot);
+      if (templateName === "app-link-preview") await npm(["test"], appRoot);
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
