@@ -21,7 +21,7 @@ attributes and behavior.
 — a dependency-free Node callback for App-owned link previews. It serves domain
 ownership proof, verifies Raft's viewer assertion, checks an example access rule,
 and returns a bounded json-render card. The optional `app-link-preview`
-template adds a fixed installation check and issuer discovery to this example.
+template includes a fixed installation check and issuer discovery.
 
 ## Usage
 
