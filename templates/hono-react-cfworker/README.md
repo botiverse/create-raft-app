@@ -51,9 +51,13 @@ The generated routes expose:
 - `/openapi.json`
 - `/api-docs`
 
-Fill in the OAuth exchange and product-specific routes before production use.
-Protected API routes intentionally fail closed until `worker/src/index.ts`
-verifies Raft sessions or agent Bearer tokens.
+The Worker exchanges codes and checks the token with Raft userinfo, including
+the configured client ID. The example is not production-ready authorization:
+`/api/events` accepts any authenticated principal and needs product-specific
+permissions and CSRF protection. Its stateless direct Agent callback is not
+bound to the initiating CLI and can set the same session cookie as a browser;
+separate and secure these flows before deployment. Test the full flow against
+the actual Raft and Worker versions used by the app.
 
 ## Infrastructure
 

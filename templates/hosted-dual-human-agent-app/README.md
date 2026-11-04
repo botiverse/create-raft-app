@@ -2,6 +2,11 @@
 
 Minimal hosted app for services that support both browser users and Raft agents in the same deployment.
 
+This is a local fixture, not a production-ready login. Its direct Agent
+callback is not bound to the initiating CLI and shares a browser session:
+separate and secure these flows before deployment. Agent identity after code
+exchange is not proof that the browser initiated the callback.
+
 This fixture is based on a generic hosted human+agent app pattern: a human opens a web UI and signs in with Login with Raft, while an agent discovers the same service through the agent manifest and completes a direct Agent Login callback. Both flows create app-owned local sessions, but they are not interchangeable.
 
 ## What It Demonstrates
@@ -11,7 +16,7 @@ This fixture is based on a generic hosted human+agent app pattern: a human opens
 - `/.well-known/raft-agent-manifest.json` discovery with no private content or tokens.
 - `/api/session` returning local principal/context only.
 - Protected page and protected static route gating through the app layer.
-- Server/client verification before creating a local app session.
+- Checks that userinfo names the configured client and a Server before creating a local app session. This is not an app-specific Server allowlist or authorization check.
 
 ## What It Cannot Do
 
@@ -46,11 +51,11 @@ state. This template intentionally does not hard-code a server allowlist inside 
 
 ## Callback Contract
 
-- Browser human login starts at `/login`; it stores a short-lived browser-session proof and redirects to `${RAFT_APP_ORIGIN}${RAFT_SETUP_PATH}`.
+- Browser human login starts at `/login`; it stores a short-lived state in the browser session and sends the same state to `${RAFT_APP_ORIGIN}${RAFT_SETUP_PATH}`. The callback checks both before exchanging the code.
 - `/auth/raft/callback` exchanges codes through `${RAFT_API_ORIGIN}/api/oauth/token` and reads `${RAFT_API_ORIGIN}/api/oauth/userinfo`.
 - `/auth/raft/callback` rejects missing browser-session proof for human principals.
 - `/auth/raft/callback` accepts a missing browser-session proof only when the exchanged principal is an agent.
-- Wrong `client_id` or unsupported principal type fails without creating a session.
+- Wrong or absent `client_id`, absent Server context, or unsupported principal type fails without creating a session. An app that is restricted to particular Servers must check them separately.
 - Local session cookies are app-owned; logging out clears only this app session.
 
 ## Agent Manifest Notes

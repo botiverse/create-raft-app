@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { pathToFileURL } from "node:url";
 import cookieSession from "cookie-session";
 import dotenv from "dotenv";
 import express from "express";
@@ -63,7 +64,7 @@ app.get("/auth/login", (req, res) => {
   if (!requireConfig(res)) return;
 
   const state = crypto.randomBytes(16).toString("hex");
-  req.session = { state };
+  req.session = { state, loginStartedAt: Date.now() };
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -76,7 +77,13 @@ app.get("/auth/login", (req, res) => {
 
 app.get("/auth/callback", async (req, res) => {
   if (!requireConfig(res)) return;
-  if (!req.query.code || req.query.state !== req.session?.state) {
+  const state = req.session?.state;
+  const startedAt = req.session?.loginStartedAt;
+  if (
+    typeof req.query.code !== "string" || !req.query.code ||
+    typeof state !== "string" || !state || req.query.state !== state ||
+    !Number.isSafeInteger(startedAt) || startedAt > Date.now() || Date.now() - startedAt >= 600_000
+  ) {
     res.status(400).send("Invalid OAuth callback state.");
     return;
   }
@@ -133,6 +140,9 @@ function withLeadingSlash(value) {
   return value.startsWith("/") ? value : `/${value}`;
 }
 
-app.listen(port, () => {
-  console.log(`Pure Sign-In Demo listening on ${appOrigin}`);
-});
+export { app };
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  app.listen(port, () => {
+    console.log(`Pure Sign-In Demo listening on ${appOrigin}`);
+  });
+}

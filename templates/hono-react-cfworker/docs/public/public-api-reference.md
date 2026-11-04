@@ -24,9 +24,10 @@ GET /api/auth/me
 Authorization: Bearer <token>
 ```
 
-Returns the current principal. In the generated template this is a minimal
-stub that returns `501` until you replace it with real session lookup and role
-resolution. Do not treat arbitrary Bearer strings as authenticated.
+Returns the current principal after Raft userinfo verifies the token and its
+client ID. It accepts the app's session cookie or a Bearer token and returns
+`401` if verification fails. It does not establish product-specific roles or
+permissions; add those checks before exposing protected operations.
 
 ## OpenAPI
 
