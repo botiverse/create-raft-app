@@ -17,6 +17,9 @@ test('sample renderer verifies the callback purpose, identity, resource and body
   }
   assert.throws(() => previewForRequest({ ...input, body: { ...body, url: 'https://app.example/pr/456' } }));
   assert.throws(() => previewForRequest({ ...input, installationId: undefined }));
+  const otherKey = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  const wrongJwks = { keys: [{ ...otherKey.publicKey.export({ format: 'jwk' }), kid: 'test', alg: 'ES256' }] };
+  assert.throws(() => previewForRequest({ ...input, jwks: wrongJwks }));
 });
 
 test('HTTP callback serves proof and fails closed for a foreign installation', async () => {
