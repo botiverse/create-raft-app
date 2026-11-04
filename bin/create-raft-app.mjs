@@ -116,6 +116,24 @@ const templates = [
       ],
     },
   },
+  {
+    name: "app-link-preview",
+    label: "App link preview",
+    description: "Viewer-authorized link preview callback with a synthetic resource",
+    agentHandoff: {
+      files: ["AGENTS.md", "README.md", "raft-template.json"],
+      commands: ["npm test", "npm start"],
+      env: ["RAFT_ISSUER", "RAFT_CLIENT_ID", "RAFT_SERVER_ID", "RAFT_INSTALLATION_ID", "APP_ORIGIN", "ALLOWED_VIEWER_IDS"],
+      urls: [
+        { label: "domainProof", url: "http://localhost:8789/.well-known/raft-link-preview.json" },
+        { label: "previewCallback", url: "http://localhost:8789/preview" },
+      ],
+      registration: [
+        "Use a domain you control and register its HTTPS callback for an installed App.",
+        "Replace the synthetic viewer allowlist with your App's current per-resource access checks.",
+      ],
+    },
+  },
 ];
 
 const defaultTemplate = templates[0];

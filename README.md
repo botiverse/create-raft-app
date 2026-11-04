@@ -20,12 +20,13 @@ attributes and behavior.
 [`examples/app-link-preview/`](https://github.com/botiverse/create-raft-app/tree/main/examples/app-link-preview)
 — a dependency-free Node callback for App-owned link previews. It serves domain
 ownership proof, verifies Raft's viewer assertion, checks an example access rule,
-and returns a bounded json-render card. The guide describes access requirements;
-this standalone example is not yet a packaged `--template` option.
+and returns a bounded json-render card. The optional `app-link-preview`
+template adds a fixed installation check and issuer discovery to this example.
 
 ## Usage
 
 Requires Node.js 20.19 or newer, or Node.js 22.12 or newer.
+The `app-link-preview` template itself requires Node.js 24 or newer.
 
 Start the interactive scaffold:
 
@@ -100,6 +101,7 @@ Cloudflare Worker apps.
 | `hosted-http-action-service` | Express HTTP action service | Manifest-declared hosted actions with public action envelopes and structured errors. |
 | `oauth-http-action-service` | Express OAuth + action service | Login with Raft plus service-local agent session and HTTP action endpoint. |
 | `hosted-dual-human-agent-app` | Express hosted dual app | Browser human login and direct agent callback sessions in one hosted service. |
+| `app-link-preview` | Node.js 24+ HTTP callback | Viewer-authorized synthetic link preview with domain proof and a local regression test. |
 
 Examples:
 
@@ -109,6 +111,7 @@ npm create raft-app@latest cli-wrapper-demo -- --template local-cli-wrapper
 npm create raft-app@latest action-demo -- --template hosted-http-action-service
 npm create raft-app@latest oauth-action-demo -- --template oauth-http-action-service
 npm create raft-app@latest dual-app-demo -- --template hosted-dual-human-agent-app
+npm create raft-app@latest preview-demo -- --template app-link-preview
 ```
 
 ## Generated app

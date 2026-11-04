@@ -11,6 +11,7 @@ const allowedKinds = new Set([
   "hosted-http-action-service",
   "oauth-http-action-service",
   "hosted-dual-human-agent-app",
+  "app-link-preview",
   "private-shared-checklist",
   "bot-app-v1-blocking-checklist",
 ]);

@@ -1,0 +1,12 @@
+{
+  "id": "app-link-preview",
+  "name": "App Link Preview",
+  "kind": "app-link-preview",
+  "status": "v0",
+  "appType": "link_preview_renderer",
+  "conversationRole": "tool_api",
+  "capabilities": ["link_preview.domain_proof", "link_preview.callback", "link_preview.viewer_assertion"],
+  "negativeCapabilities": ["oauth.sign_in", "messages.read", "messages.send", "agent_event.ingest", "bot.sender", "custom_action_card"],
+  "authoritySources": ["registration", "grant", "scope", "runtime-permission"],
+  "readme": "README.md"
+}
