@@ -29,6 +29,11 @@ token is ever printed or pasted: the callback never returns one in its body.
 Bearer credentials are accepted only if Raft issued them to this app (userinfo
 `client_id`).
 
+The stateless direct Agent callback is a compatibility example, not a
+browser-bound handoff. It can set the same session cookie as a browser; do not
+deploy it as-is. Separate and secure human and Agent sessions and add the app's
+own authorization and CSRF checks before deploying.
+
 The canonical manifest is `/.well-known/raft-agent-manifest.json` with schema
 `raft-agent-manifest.v0`.
 

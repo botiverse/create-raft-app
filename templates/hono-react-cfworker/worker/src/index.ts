@@ -97,8 +97,9 @@ async function resolvePrincipal(token: string, env: Bindings): Promise<Principal
       server_slug?: string;
       server_id?: string;
     };
-    if (!info.sub) return null;
+    if (typeof info.sub !== "string" || !info.sub || typeof info.server_id !== "string" || !info.server_id) return null;
     if (info.client_id !== env.RAFT_CLIENT_ID) return null;
+    if (info.type !== "human" && info.type !== "agent") return null;
     const handle = info.preferred_username || info.name || info.sub;
     const server = info.server_slug || info.server_id || "raft";
     return {
@@ -229,9 +230,10 @@ function callbackUrl(c: AppContext) {
 
 app.get("/api/auth/login", (c) => {
   const raftOrigin = c.env.RAFT_ORIGIN || "https://app.raft.build";
-  // Mark a pending browser login so the callback can tell humans (redirect back)
-  // from agents (return JSON) apart.
-  setCookie(c, LOGIN_PENDING_COOKIE, crypto.randomUUID(), {
+  // Bind the browser's callback to this login, not just to the existence of
+  // a pending cookie. Raft returns this value unchanged with the code.
+  const state = crypto.randomUUID();
+  setCookie(c, LOGIN_PENDING_COOKIE, state, {
     httpOnly: true,
     secure: true,
     sameSite: "Lax",
@@ -242,14 +244,24 @@ app.get("/api/auth/login", (c) => {
   setup.searchParams.set("client_id", c.env.RAFT_CLIENT_ID || "__PACKAGE_NAME__");
   setup.searchParams.set("return_to", callbackUrl(c));
   setup.searchParams.set("scope", "openid profile");
+  setup.searchParams.set("state", state);
+  c.header("cache-control", "no-store");
   return c.redirect(setup.toString(), 302);
 });
 
 app.get("/login/raft/callback", async (c) => {
   const code = c.req.query("code");
   if (!code) return c.json({ error: "missing code" }, 400);
-  const hadPendingBrowserLogin = Boolean(getCookie(c, LOGIN_PENDING_COOKIE));
+  const pendingBrowserState = getCookie(c, LOGIN_PENDING_COOKIE);
+  const callbackState = c.req.query("state");
+  const hadPendingBrowserLogin = Boolean(pendingBrowserState);
   deleteCookie(c, LOGIN_PENDING_COOKIE, { path: "/" });
+
+  // Reject a missing, foreign, or altered state before sending the code to
+  // Raft. A state without this browser's cookie is not an Agent handoff.
+  if (hadPendingBrowserLogin ? callbackState !== pendingBrowserState : callbackState !== undefined) {
+    return c.json({ error: "LOGIN_STATE_INVALID", hint: "Start login again from this app." }, 400);
+  }
 
   // Requires RAFT_CLIENT_SECRET + a registered app.
   const token = await exchangeRaftCode(c.env, code);

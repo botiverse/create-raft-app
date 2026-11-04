@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import crypto from "node:crypto";
+import { pathToFileURL } from "node:url";
 import cookieSession from "cookie-session";
 import dotenv from "dotenv";
 import express from "express";
@@ -78,6 +79,7 @@ app.get("/login", (req, res) => {
 
   req.session = {
     loginState: crypto.randomBytes(16).toString("hex"),
+    loginStartedAt: Date.now(),
     returnTo: normalizeReturnTo(req.query.return_to)
   };
 
@@ -85,6 +87,7 @@ app.get("/login", (req, res) => {
   setupUrl.searchParams.set("client_id", clientId);
   setupUrl.searchParams.set("return_to", `${appOrigin}/auth/raft/callback`);
   setupUrl.searchParams.set("scope", oauthScope);
+  setupUrl.searchParams.set("state", req.session.loginState);
   res.redirect(setupUrl.toString());
 });
 
@@ -93,6 +96,18 @@ app.get("/auth/raft/callback", async (req, res) => {
   const code = typeof req.query.code === "string" ? req.query.code : "";
   if (!code) {
     res.status(400).send("Missing callback code.");
+    return;
+  }
+
+  const pendingState = req.session?.loginState;
+  const returnedState = req.query.state;
+  const hasBrowserState = typeof pendingState === "string";
+  // A browser login is valid only for the exact state it started with. A
+  // state-bearing request with no session must not become an agent handoff.
+  const startedAt = req.session?.loginStartedAt;
+  const fresh = Number.isSafeInteger(startedAt) && startedAt <= Date.now() && Date.now() - startedAt < 600_000;
+  if (hasBrowserState ? returnedState !== pendingState || !fresh : returnedState !== undefined) {
+    res.status(400).send("Invalid OAuth callback state.");
     return;
   }
 
@@ -107,8 +122,6 @@ app.get("/auth/raft/callback", async (req, res) => {
     res.status(400).send("Unsupported principal type.");
     return;
   }
-
-  const hasBrowserState = typeof req.session?.loginState === "string";
 
   if (principal.type === "human" && !hasBrowserState) {
     req.session = null;
@@ -212,8 +225,9 @@ function normalizePrincipal(userinfo) {
 }
 
 function verifyContext(principal, userinfo, res) {
-  const actualClientId = userinfo.client_id ?? userinfo.clientId ?? clientId;
-  if (actualClientId !== clientId || !principal.id) {
+  const actualClientId = userinfo.client_id ?? userinfo.clientId;
+  const serverId = userinfo.server_id ?? userinfo.serverId;
+  if (actualClientId !== clientId || !principal.id || typeof serverId !== "string" || !serverId) {
     res.status(403).send("Principal is not authorized for this app context.");
     return false;
   }
@@ -255,6 +269,10 @@ function basicAuth(id, secret) {
   return Buffer.from(`${id}:${secret}`, "utf8").toString("base64");
 }
 
-app.listen(port, () => {
-  console.log(`Hosted Dual Demo listening on ${appOrigin}`);
-});
+export { app };
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  app.listen(port, () => {
+    console.log(`Hosted Dual Demo listening on ${appOrigin}`);
+  });
+}

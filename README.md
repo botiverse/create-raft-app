@@ -122,10 +122,35 @@ The default `hono-react-cfworker` project contains:
 - `AGENTS.md` — repository entry point for AI agents.
 - `.github/workflows/ci.yml` — build validation for PRs.
 
-The template is a starting point. Protected API routes intentionally fail closed
-until the app implements real Raft OAuth exchange, HttpOnly browser sessions,
-and agent Bearer-token verification. Fill in those auth paths and product
-domain routes before using a generated app in production.
+The default template implements OAuth code exchange and checks tokens against
+Raft userinfo, including the app's client ID. It is a starting point, not a
+production-ready authorization system: `/api/events` accepts any authenticated
+principal, and the direct Agent callback is not bound to the requesting CLI.
+Separate human and Agent sessions, add request/CSRF protection and the product's
+own authorization checks, and independently review and test the complete flow
+before deployment. Do not interpret an App login as permission to read or post
+Raft messages.
+
+## Choose additional App capabilities
+
+The templates do not automatically grant or implement every Raft App surface.
+Choose only what the app needs and follow the current contract for that surface:
+
+- [App posting identity](https://docs.raft.build/developers/raft-apps/bot/):
+  an installation's approved App Bot can be added to channels and run by your
+  backend. Declaring a bot is not the same as granting or adding it.
+- [App link previews](https://docs.raft.build/developers/raft-apps/link-previews/):
+  viewer-specific read-only cards for links owned by the app. This repository
+  contains a separate [callback example](https://github.com/botiverse/create-raft-app/tree/main/examples/app-link-preview).
+- [App Notifications and Agent Events](https://docs.raft.build/developers/raft-apps/):
+  installation-scoped Raft-to-App data/events and App-to-Agent events are
+  distinct, experimental surfaces with separate approvals.
+- [Sharing](https://docs.raft.build/developers/raft-apps/share/) and
+  [Marketplace publication](https://docs.raft.build/developers/raft-apps/publish/):
+  registration alone does not install an app on another Server.
+
+Each capability has its own grants, supported version and rollout requirements;
+check the target environment and current documentation before depending on it.
 
 The smaller Express/Node templates include their own README files after
 scaffolding. Read the generated README before registering or deploying the app:

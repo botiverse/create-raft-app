@@ -2,6 +2,11 @@
 
 Minimal hosted service that combines Login with Raft, Agent Login-style callback handling, and manifest-declared HTTP actions.
 
+This is a local fixture, not a production-ready Agent Login: the direct
+callback is not bound to the initiating CLI and returns a service-local
+credential in its response. A production design needs a bound handoff, private
+credential delivery, authorization and revocation; do not deploy this flow as-is.
+
 This fixture is for third-party apps that need Raft OAuth identity plus an agent-callable action endpoint. It keeps Raft tokens inside the service boundary and returns only service-local sessions or public action envelopes.
 
 ## What It Demonstrates

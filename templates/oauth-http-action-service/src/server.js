@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { pathToFileURL } from "node:url";
 import cookieSession from "cookie-session";
 import dotenv from "dotenv";
 import express from "express";
@@ -170,7 +171,7 @@ app.get("/auth/login", (req, res) => {
   if (!requireConfig(res)) return;
 
   const state = crypto.randomBytes(16).toString("hex");
-  req.session = { state };
+  req.session = { state, loginStartedAt: Date.now() };
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -185,7 +186,13 @@ app.get("/auth/login", (req, res) => {
 
 app.get("/auth/callback", async (req, res) => {
   if (!requireConfig(res)) return;
-  if (!req.query.code || req.query.state !== req.session?.state) {
+  const state = req.session?.state;
+  const startedAt = req.session?.loginStartedAt;
+  if (
+    typeof req.query.code !== "string" || !req.query.code ||
+    typeof state !== "string" || !state || req.query.state !== state ||
+    !Number.isSafeInteger(startedAt) || startedAt > Date.now() || Date.now() - startedAt >= 600_000
+  ) {
     res.status(400).send("Invalid OAuth callback state.");
     return;
   }
@@ -209,16 +216,25 @@ app.get("/agent/callback", async (req, res) => {
   try {
     const token = await exchangeCode(String(req.query.code), `${appOrigin}/agent/callback`);
     const principal = await fetchUserinfo(token.access_token);
+    if (
+      principal.type !== "agent" || principal.client_id !== clientId ||
+      typeof principal.sub !== "string" || !principal.sub ||
+      typeof principal.server_id !== "string" || !principal.server_id
+    ) {
+      res.status(403).json(errorEnvelope("IDENTITY_UNVERIFIED", "The Agent identity or App context could not be verified.", 403).body);
+      return;
+    }
+    const agent = { sub: principal.sub, type: "agent", server_id: principal.server_id };
     const agentSessionToken = crypto.randomBytes(24).toString("base64url");
     agentSessions.set(agentSessionToken, {
-      principal,
+      principal: agent,
       createdAt: new Date().toISOString()
     });
     res.json({
       ok: true,
       agentSessionToken,
       tokenType: "service-local-agent-session",
-      principal,
+      principal: agent,
       rawRaftTokenExposed: false
     });
   } catch (error) {
@@ -269,6 +285,9 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-app.listen(port, () => {
-  console.log(`OAuth + HTTP Action Service fixture listening on ${appOrigin}`);
-});
+export { app };
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  app.listen(port, () => {
+    console.log(`OAuth + HTTP Action Service fixture listening on ${appOrigin}`);
+  });
+}

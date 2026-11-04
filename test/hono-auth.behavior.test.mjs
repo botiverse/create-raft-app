@@ -45,7 +45,7 @@ after(async () => {
   if (tempRoot) await rm(tempRoot, { recursive: true, force: true });
 });
 
-function identityProvider(t, { clientId = env.RAFT_CLIENT_ID, type = "agent", tokenStatus = 200 } = {}) {
+function identityProvider(t, { clientId = env.RAFT_CLIENT_ID, type = "agent", serverId = "fixture-server-id", tokenStatus = 200 } = {}) {
   const calls = [];
   t.mock.method(globalThis, "fetch", async (input) => {
     const url = String(input);
@@ -54,7 +54,7 @@ function identityProvider(t, { clientId = env.RAFT_CLIENT_ID, type = "agent", to
       return Response.json(tokenStatus === 200 ? { access_token: token, expires_in: 3600 } : { error: "rejected" }, { status: tokenStatus });
     }
     assert.equal(url, `${env.RAFT_API_ORIGIN}/api/oauth/userinfo`, "unexpected network request");
-    return Response.json({ sub: "fixture-principal", type, client_id: clientId, name: "Fixture", server_slug: "fixture-server" });
+    return Response.json({ sub: "fixture-principal", type, client_id: clientId, name: "Fixture", server_id: serverId, server_slug: "fixture-server" });
   });
   return calls;
 }
@@ -77,6 +77,22 @@ test("another app's token cannot authenticate a bearer request", async (t) => {
   }, env);
   assert.equal(response.status, 401);
   assert.equal(sessionCookie(response), undefined);
+});
+
+test("an unknown principal type is refused", async (t) => {
+  identityProvider(t, { type: "unknown" });
+  const response = await app.request("https://app.example.test/api/auth/me", {
+    headers: { authorization: `Bearer ${token}` },
+  }, env);
+  assert.equal(response.status, 401);
+});
+
+test("a token without a Server context is refused", async (t) => {
+  identityProvider(t, { serverId: "" });
+  const response = await app.request("https://app.example.test/api/auth/me", {
+    headers: { authorization: `Bearer ${token}` },
+  }, env);
+  assert.equal(response.status, 401);
 });
 
 test("another app's token cannot establish a callback session", async (t) => {
@@ -129,10 +145,47 @@ test("an agent gets a scoped cookie and can use it, without a response-body toke
 
 test("a same-app human with pending login still receives a browser session", async (t) => {
   identityProvider(t, { type: "human" });
-  const response = await callback({ cookie: "raft_login_pending=synthetic-pending" });
+  const login = await app.request("https://app.example.test/api/auth/login", {}, env);
+  const state = new URL(login.headers.get("location")).searchParams.get("state");
+  const pending = login.headers.getSetCookie().find((value) => value.startsWith("raft_login_pending="));
+  assert.ok(state);
+  assert.ok(pending);
+  assert.equal(decodeURIComponent(pending.split(";")[0].split("=")[1]), state);
+  const response = await app.request(
+    `https://app.example.test/login/raft/callback?code=synthetic-code&state=${encodeURIComponent(state)}`,
+    { headers: { cookie: pending.split(";")[0] } }, env,
+  );
   assert.equal(response.status, 302);
   assert.equal(response.headers.get("location"), "/");
   assert.ok(sessionCookie(response));
+});
+
+test("missing browser state or cookie never exchanges a code", async (t) => {
+  const calls = identityProvider(t, { type: "human" });
+  const noState = await callback({ cookie: "raft_login_pending=synthetic-pending" });
+  assert.equal(noState.status, 400);
+  assert.equal(sessionCookie(noState), undefined);
+  const noCookie = await app.request(
+    "https://app.example.test/login/raft/callback?code=synthetic-code&state=synthetic-state",
+    {}, env,
+  );
+  assert.equal(noCookie.status, 400);
+  assert.equal(sessionCookie(noCookie), undefined);
+  assert.deepEqual(calls, []);
+});
+
+test("a browser callback with an unrelated state is rejected before code exchange", async (t) => {
+  const calls = identityProvider(t, { type: "human" });
+  const login = await app.request("https://app.example.test/api/auth/login", {}, env);
+  const pending = login.headers.getSetCookie().find((value) => value.startsWith("raft_login_pending="));
+  assert.ok(pending);
+  const response = await app.request(
+    "https://app.example.test/login/raft/callback?code=synthetic-code&state=attacker-state",
+    { headers: { cookie: pending.split(";")[0] } }, env,
+  );
+  assert.equal(response.status, 400);
+  assert.equal(sessionCookie(response), undefined);
+  assert.deepEqual(calls, []);
 });
 
 test("expired or consumed codes return 409 without a session or identity lookup", async (t) => {
