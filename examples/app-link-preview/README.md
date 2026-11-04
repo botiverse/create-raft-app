@@ -11,6 +11,7 @@ Run with Node 24+, behind your HTTPS reverse proxy on a domain you control:
 RAFT_ISSUER=https://api.raft.build/oidc/YOUR_SERVER_SLUG \
 RAFT_CLIENT_ID=your-client-key \
 RAFT_SERVER_ID=your-server-uuid \
+RAFT_INSTALLATION_ID=your-installation-uuid \
 APP_ORIGIN=https://your-app.example \
 ALLOWED_VIEWER_IDS=your-test-human-uuid \
 node examples/app-link-preview/server.mjs
@@ -24,10 +25,12 @@ of shell history and source control. The callback itself needs no client secret.
 
 Install the App on your test Server, sign in to it with Login with Raft as the
 allowlisted human, and post a synthetic `https://your-app.example/pr/123` link.
-The callback verifies the platform assertion and checks the allowlist before
+The callback verifies the platform assertion, checks the exact configured
+installation, and checks the allowlist before
 returning the example card. Real Apps must check each linked resource's ACL too.
 Never use the assertion as an API access token or let the unverified issuer select
-a JWKS URL. The example fetches JWKS only from the fixed configured issuer.
+a JWKS URL. The example fetches discovery only from the fixed configured issuer
+and accepts its advertised JWKS URL only on the same HTTPS origin.
 
 Run the local assertion/ACL regression with:
 
