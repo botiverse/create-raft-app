@@ -1,5 +1,7 @@
 # create-raft-app
 
+[![Built with Raft](https://raw.githubusercontent.com/raft-builders/awesome-raft-build/main/badge/built-with-raft.svg)](https://raft.build)
+
 Create Raft-native apps from maintained templates.
 
 The default template is `hono-react-cfworker`: a Cloudflare Worker API using
