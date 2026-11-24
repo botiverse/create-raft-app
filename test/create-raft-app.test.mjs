@@ -196,6 +196,17 @@ test("the v0 manifest check rejects legacy and unsupported shapes", () => {
   assert.match(problems({ ...httpApi, actions: [{ name: "x", method: "GET", path: "/x" }] }), /endpoint must be an object/);
   assert.match(problems({ ...httpApi, actions: [{ name: "x", endpoint: { method: "GET", path: "https://evil.example/x" } }] }), /relative service path/);
   assert.match(problems({ ...httpApi, actions: [httpApi.actions[0], httpApi.actions[0]] }), /duplicate action name/);
+  // WHATWG URL parsing reads a backslash as a slash, so these leave the origin.
+  for (const path of ["/\\evil.test/x", "/\\\\evil.test/x", "/\t/evil.test/x"]) {
+    assert.match(problems({ ...httpApi, actions: [{ name: "x", endpoint: { method: "GET", path } }] }), /own origin|relative service path/, JSON.stringify(path));
+  }
+  assert.deepEqual(validateAgentManifestV0({ ...httpApi, actions: [{ name: "x", endpoint: { method: "GET", path: "/files/{id}?download=1" } }] }), []);
+  const fileAction = (response) => ({ ...httpApi, actions: [{ name: "export", endpoint: { method: "GET", path: "/export" }, response }] });
+  assert.deepEqual(validateAgentManifestV0(fileAction({ type: "file", contentType: "text/csv", maxBytes: 1048576 })), []);
+  for (const maxBytes of [-1, 0, 1.5, "10", Number.POSITIVE_INFINITY]) {
+    assert.match(problems(fileAction({ type: "file", maxBytes })), /maxBytes must be a positive integer/, String(maxBytes));
+  }
+  assert.match(problems(fileAction({ type: "json" })), /response\.type must be file/);
   const localCli = { schema: "raft-agent-manifest.v0", execution: { mode: "local_cli", command: "demo" }, credential_boundary: { storage: "per_agent_home", forbid_user_home: true } };
   assert.deepEqual(validateAgentManifestV0(localCli), []);
   assert.match(problems({ ...localCli, execution: { mode: "local_cli", command: "node src/wrapper.js" } }), /bare command name/);

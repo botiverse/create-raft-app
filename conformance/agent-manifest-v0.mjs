@@ -1,10 +1,11 @@
 // Checks a manifest against the documented raft-agent-manifest.v0 contract
 // (https://docs.raft.build/developers/login-with-raft/#manifest-fields).
-// It mirrors the rules Raft applies when it reads a v0 manifest, and is
-// stricter where the docs are, so templates teach only the current shape: the
-// schema must be the Raft-branded name, unknown top-level fields (such as a
-// legacy manifestVersion, oauth, agentLogin, or http_api block) are errors,
-// and actions are rejected outside execution.mode http_api.
+// It follows the rules Raft applies when it reads a v0 manifest closely enough
+// to catch what templates get wrong, but it is not a copy of Raft's validator.
+// It is intentionally stricter in places, so templates teach only the current
+// shape: the schema must be the Raft-branded name, unknown top-level fields
+// (such as a legacy manifestVersion, oauth, agentLogin, or http_api block) are
+// errors, and actions are rejected outside execution.mode http_api.
 // Returns a list of problems; an empty list means the manifest is valid.
 
 export const RAFT_AGENT_MANIFEST_SCHEMA_V0 = "raft-agent-manifest.v0";
@@ -27,6 +28,28 @@ const namePattern = /^[A-Za-z0-9._:-]{1,80}$/;
 
 function isRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+// Raft resolves an action path as a URL: against a placeholder origin when it
+// validates the manifest, and against execution.base_url (or app_origin) when
+// it calls the action. Either way the result must stay on that origin and
+// carry no credentials or fragment.
+function staysOnOrigin(path, manifest) {
+  const bases = ["https://manifest.local"];
+  const callBase = manifest.execution?.base_url ?? manifest.app_origin;
+  if (typeof callBase === "string") bases.push(callBase);
+  for (const base of bases) {
+    let baseUrl, resolved;
+    try {
+      baseUrl = new URL(base);
+      resolved = new URL(path, baseUrl);
+    } catch {
+      if (base === "https://manifest.local") return false;
+      continue; // an invalid base_url is reported on its own
+    }
+    if (resolved.origin !== baseUrl.origin || resolved.username || resolved.password || resolved.hash) return false;
+  }
+  return true;
 }
 
 export function validateAgentManifestV0(manifest) {
@@ -161,13 +184,24 @@ export function validateAgentManifestV0(manifest) {
           const path = endpoint.path;
           if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//") || path.includes("#")) {
             problem(`${at}.endpoint.path must be a relative service path starting with /`);
+          } else if (!staysOnOrigin(path, manifest)) {
+            // WHATWG URL parsing turns e.g. "/\\evil.test/x" into another host.
+            problem(`${at}.endpoint.path must resolve to the service's own origin`);
           }
         }
         checkFieldSpecs(action.parameters, `${at}.parameters`, true);
         checkFieldSpecs(action.returns, `${at}.returns`, false);
         if (action.response !== undefined) {
-          if (!isRecord(action.response) || action.response.type !== "file") {
+          const response = action.response;
+          if (!isRecord(response) || response.type !== "file") {
             problem(`${at}.response.type must be file`);
+          } else {
+            checkOptionalString(response.contentType, `${at}.response.contentType`);
+            checkOptionalString(response.filename, `${at}.response.filename`);
+            checkOptionalString(response.description, `${at}.response.description`);
+            if (response.maxBytes !== undefined && !(Number.isInteger(response.maxBytes) && response.maxBytes > 0)) {
+              problem(`${at}.response.maxBytes must be a positive integer`);
+            }
           }
         }
       });
