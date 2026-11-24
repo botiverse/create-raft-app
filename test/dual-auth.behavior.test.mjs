@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -10,7 +10,7 @@ import { after, before, test } from "node:test";
 const exec = promisify(execFile);
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const nativeFetch = globalThis.fetch;
-let tempRoot, server, appOrigin;
+let tempRoot, appRoot, server, appOrigin;
 let calls = [];
 let providerIdentity = { sub: "synthetic-user", type: "human", client_id: "fixture-app", server_id: "fixture-server" };
 
@@ -18,6 +18,7 @@ before(async () => {
   tempRoot = await mkdtemp(path.join(os.tmpdir(), "raft-dual-auth-"));
   await exec(process.execPath, [path.join(repoRoot, "bin/create-raft-app.mjs"), "fixture-app", "--template", "hosted-dual-human-agent-app", "--yes", "--no-install"], { cwd: tempRoot });
   const root = path.join(tempRoot, "fixture-app");
+  appRoot = root;
   await exec("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: root, maxBuffer: 4 * 1024 * 1024 });
   Object.assign(process.env, {
     RAFT_CLIENT_ID: "fixture-app", RAFT_CLIENT_SECRET: "synthetic-secret",
@@ -76,4 +77,21 @@ test("a matching browser callback succeeds only for the configured client", asyn
   const second = await begin();
   const missingClient = await fetch(`${appOrigin}/auth/raft/callback?code=fixture&state=${second.state}`, { headers: { cookie: second.cookies }, redirect: "manual" });
   assert.equal(missingClient.status, 403);
+});
+
+test("the agent manifest is raft-agent-manifest.v0 built from APP_ORIGIN", async () => {
+  const response = await fetch(`${appOrigin}/.well-known/raft-agent-manifest.json`);
+  assert.equal(response.status, 200);
+  const manifest = await response.json();
+  assert.equal(manifest.schema, "raft-agent-manifest.v0");
+  assert.equal(manifest.service, "fixture-app");
+  assert.deepEqual(manifest.execution, { mode: "http_api", base_url: "https://app.example.test" });
+  assert.deepEqual(manifest.actions.map((action) => action.endpoint), [{ method: "GET", path: "/api/session" }]);
+  assert.equal(manifest.http_api, undefined);
+  // manifest.example.json is the same manifest with the default local origin.
+  const example = JSON.parse(await readFile(path.join(appRoot, "manifest.example.json"), "utf8"));
+  assert.deepEqual(
+    manifest,
+    JSON.parse(JSON.stringify(example).replaceAll("http://localhost:4174", "https://app.example.test")),
+  );
 });

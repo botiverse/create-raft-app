@@ -129,6 +129,21 @@ test("lists templates as machine-readable JSON", async () => {
   }
 });
 
+test("every handoff env key is read by the template's code or config", async () => {
+  const result = await run(["--list-templates", "--json"], repoRoot);
+  const body = JSON.parse(result.stdout);
+  for (const template of body.templates) {
+    const templateRoot = path.join(repoRoot, "templates", template.name);
+    // Docs (README.md, AGENTS.md) only repeat the handoff; the key must be one
+    // the generated code or config actually reads.
+    const files = (await readGeneratedTextFiles(templateRoot)).filter((file) => path.extname(file) !== ".md");
+    const sources = (await Promise.all(files.map((file) => readFile(file, "utf8")))).join("\n");
+    for (const key of template.agentHandoff.env) {
+      assert.match(sources, new RegExp(`\\b${key}\\b`), `${template.name} handoff lists ${key}, which the template never reads`);
+    }
+  }
+});
+
 test("test template list matches packaged template directories", async () => {
   const dirs = await readdir(path.join(repoRoot, "templates"), { withFileTypes: true });
   const packagedTemplateNames = dirs

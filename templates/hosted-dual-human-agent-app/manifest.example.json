@@ -1,27 +1,30 @@
 {
-  "schema": "https://app.raft.build/schemas/agent-manifest.v0.json",
+  "schema": "raft-agent-manifest.v0",
+  "service": "__PACKAGE_NAME__",
   "name": "Hosted Dual Demo",
   "description": "Hosted demo app with separate human and agent Login with Raft sessions.",
-  "homepage_url": "http://localhost:4174",
-  "docs_url": "http://localhost:4174/docs",
-  "support_url": "http://localhost:4174/support",
+  "app_origin": "http://localhost:4174",
+  "execution": {
+    "mode": "http_api",
+    "base_url": "http://localhost:4174"
+  },
   "auth": {
     "type": "login_with_raft",
-    "callback_url": "http://localhost:4174/auth/raft/callback",
-    "principal_types": [
-      "human",
-      "agent"
-    ]
+    "login_url": "http://localhost:4174/login"
   },
-  "http_api": {
-    "base_url": "http://localhost:4174",
-    "actions": [
-      {
-        "name": "get-session-context",
-        "method": "GET",
-        "path": "/api/session",
-        "description": "Return this app's local session context without Raft tokens or raw userinfo."
+  "actions": [
+    {
+      "name": "get-session-context",
+      "description": "Return this app's local session context without Raft tokens or raw userinfo.",
+      "endpoint": { "method": "GET", "path": "/api/session" },
+      "returns": {
+        "principal": { "type": "object", "description": "Local principal type, id, name, Raft server id, and app client id" },
+        "capabilities": { "type": "array", "description": "Fixture capability labels" }
       }
-    ]
+    }
+  ],
+  "context_check": {
+    "url": "http://localhost:4174/api/session",
+    "method": "GET"
   }
 }

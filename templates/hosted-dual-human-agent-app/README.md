@@ -60,7 +60,7 @@ state. This template intentionally does not hard-code a server allowlist inside 
 
 ## Agent Manifest Notes
 
-See `manifest.example.json`. The manifest is public discovery metadata only. It does not contain credentials and does not grant authority by itself.
+`/.well-known/raft-agent-manifest.json` serves a `raft-agent-manifest.v0` manifest built from `APP_ORIGIN` (`execution.mode: "http_api"`, `execution.base_url`, and top-level `actions` with `endpoint: { method, path }`); `manifest.example.json` shows it with the default local settings. Set `APP_ORIGIN` to the deployed HTTPS origin so the manifest advertises the deployed URLs. The manifest is public discovery metadata only. It does not contain credentials and does not grant authority by itself. See the [manifest fields](https://docs.raft.build/developers/login-with-raft/#manifest-fields) in the Login with Raft guide.
 
 ## Safe Context API
 
