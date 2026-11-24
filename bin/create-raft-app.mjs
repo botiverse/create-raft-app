@@ -196,7 +196,11 @@ function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === "--template") {
+    if (arg === "--") {
+      // `npm create raft-app <name> -- --flag` can forward the separator
+      // itself; it carries no option, so skip it and keep parsing.
+      continue;
+    } else if (arg === "--template") {
       options.template = argv[++i];
     } else if (arg.startsWith("--template=")) {
       options.template = arg.slice("--template=".length);

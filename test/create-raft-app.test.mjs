@@ -112,6 +112,21 @@ test("lists every packaged template", async () => {
   }
 });
 
+test("a forwarded -- separator is ignored", async () => {
+  // npm/pnpm create can pass the `--` through to the CLI.
+  const listed = await run(["--", "--list-templates"], repoRoot);
+  assert.match(listed.stdout, /^Available templates:/m);
+  const json = await run(["--list-templates", "--", "--json"], repoRoot);
+  assert.equal(JSON.parse(json.stdout).schemaVersion, "create-raft-app.templates.v1");
+  const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
+  try {
+    const result = await run(["sep-app", "--", "--template", "local-cli-wrapper", "--yes", "--no-install"], tmp);
+    assert.match(result.stdout, /Created sep-app from local-cli-wrapper/);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
 test("lists templates as machine-readable JSON", async () => {
   const result = await run(["--list-templates", "--json"], repoRoot);
   const body = JSON.parse(result.stdout);
