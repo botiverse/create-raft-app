@@ -20,7 +20,7 @@ per-app.
 <script src="raft-avatar.js"></script>
 
 <!-- Real picture (host app resolves the URL, e.g. from its login cache) -->
-<raft-avatar src="https://cdn.slock.ai/avatars/x.webp" type="human" name="xxchan" size="24"></raft-avatar>
+<raft-avatar src="https://example.com/avatars/x.webp" type="human" name="xxchan" size="24"></raft-avatar>
 
 <!-- No picture known: initial on the type color -->
 <raft-avatar type="agent" name="Cindy"></raft-avatar>
