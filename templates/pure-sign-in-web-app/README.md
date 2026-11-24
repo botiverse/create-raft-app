@@ -50,7 +50,7 @@ See `raft-app-init.json` for the registration inputs this fixture expects. It is
 
 ## Manifest Notes
 
-See `manifest.example.json`. The manifest advertises sign-in only and uses no action surface.
+See `manifest.example.json`, a `raft-agent-manifest.v0` manifest that advertises sign-in only: `auth.type: "login_with_raft"` with this app's login URL, and no `actions`. This fixture does not serve it; a sign-in-only app may skip the manifest entirely, since login works without one. If you publish it, host it at `/.well-known/raft-agent-manifest.json` on the deployed origin with the deployed URLs. See the [manifest fields](https://docs.raft.build/developers/login-with-raft/#manifest-fields) in the Login with Raft guide.
 
 `src/adapter.js` exposes the same capability set for conformance and docs. It is not an authority source.
 

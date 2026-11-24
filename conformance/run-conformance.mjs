@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { validateAgentManifestV0 } from "./agent-manifest-v0.mjs";
 
 const root = path.resolve(new URL("..", import.meta.url).pathname);
 const failures = [];
@@ -169,6 +170,22 @@ function assertHostedDualHumanAgentTemplate(dir, descriptor) {
   }
 }
 
+// A template that ships a manifest (named by its descriptor, or present as
+// manifest.example.json) ships a valid raft-agent-manifest.v0 one.
+function assertAgentManifestExample(dir, descriptor) {
+  const named = descriptor?.manifest;
+  const file = path.join(dir, named ?? "manifest.example.json");
+  if (!fs.existsSync(file)) {
+    if (named) fail(`${path.relative(root, dir)} names manifest ${named}, which does not exist`);
+    return;
+  }
+  const manifest = readJson(file);
+  if (!manifest) return;
+  for (const problem of validateAgentManifestV0(manifest)) {
+    fail(`${path.relative(root, file)} is not a raft-agent-manifest.v0 manifest: ${problem}`);
+  }
+}
+
 for (const dir of listDirs(path.join(root, "templates"))) {
   const readme = path.join(dir, "README.md");
   if (!fs.existsSync(readme)) {
@@ -183,6 +200,7 @@ for (const dir of listDirs(path.join(root, "templates"))) {
   if (descriptor) {
     assertHostedDualHumanAgentTemplate(dir, descriptor);
   }
+  assertAgentManifestExample(dir, descriptor);
 }
 
 if (failures.length > 0) {

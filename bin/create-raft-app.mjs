@@ -55,7 +55,7 @@ const templates = [
       env: ["RAFT_AGENT_ID", "RAFT_AGENT_HOME", "RAFT_AGENT_TOKEN_FILE", "RAFT_APP_ID"],
       urls: [],
       registration: [
-        "Register the wrapper command from manifest.example.json as a local CLI integration.",
+        "Register a local CLI integration for the bare command in manifest.example.json (execution.command).",
         "Pin the production command path and keep credentials in the runner-owned handoff path.",
       ],
     },

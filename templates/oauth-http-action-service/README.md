@@ -64,13 +64,13 @@ curl -sS http://localhost:4182/actions/create-demo-record \
 
 ## Manifest Notes
 
-See `manifest.example.json`. The manifest declares OAuth, Agent Login-style callback handling, and one action endpoint. The action returns a public envelope and is not a custom Raft action card.
+`/.well-known/raft-app-manifest.json` serves a `raft-agent-manifest.v0` manifest built from `APP_ORIGIN` (`execution.mode: "http_api"`, `auth.type: "login_with_raft"`, and one top-level action with `endpoint: { method, path }`, `parameters`, and `returns`); `manifest.example.json` shows it with the default local settings. Register that URL as the app's agent manifest URL, and set `APP_ORIGIN` to the deployed HTTPS origin. The action returns a public envelope and is not a custom Raft action card. OAuth endpoints, callback URLs, and scopes are registration inputs, not manifest fields. See the [manifest fields](https://docs.raft.build/developers/login-with-raft/#manifest-fields) in the Login with Raft guide.
 
 Browser login redirects through the Raft setup page and returns to this app's callback. Token exchange and userinfo use the public API routes `/api/oauth/token` and `/api/oauth/userinfo`; local session/context responses must not expose the raw Raft access token.
 
 The fixture uses HTTP Basic auth for token exchange by default because current Raft accepts it and standard OAuth libraries handle it better. Current Raft also accepts `clientId` / `clientSecret` form fields as a non-standard body fallback; generic OAuth clients often use `client_id` / `client_secret`, so do not rely on body credentials without checking the platform contract.
 
-`agentLogin.revoke` documents the service-local session revoke endpoint. Raft does not gain implicit revoke authority from the manifest alone; the service still validates the service-local agent session token.
+`DELETE /agent/session` revokes a service-local agent session. It is a service endpoint, not a manifest action: Raft gains no revoke authority from the manifest, and the service still validates the service-local agent session token.
 
 ## Production Notes
 

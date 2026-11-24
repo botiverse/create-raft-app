@@ -63,41 +63,41 @@ function errorEnvelope(code, message, status = 400) {
   };
 }
 
+// The agent behavior manifest (raft-agent-manifest.v0), built from APP_ORIGIN so
+// a deployment advertises its own URLs. manifest.example.json is this manifest
+// rendered with the default local settings. OAuth endpoints, callback URLs, and
+// scopes belong to the app registration, not the manifest.
 function manifest() {
   return {
+    schema: "raft-agent-manifest.v0",
+    service: clientId ?? "__PACKAGE_NAME__",
     name: "OAuth + HTTP Action Service Demo",
     description: "Login with Raft plus service-local agent session and HTTP action endpoint.",
-    manifestVersion: "0.1",
-    appType: "http_api_with_login",
-    conversationRole: "tool_api",
-    baseUrl: appOrigin,
-    oauth: {
-      setupUrl: `${raftAppOrigin}${raftSetupPath}`,
-      tokenUrl: `${raftApiOrigin}/api/oauth/token`,
-      userinfoUrl: `${raftApiOrigin}/api/oauth/userinfo`,
-      redirectUris: [`${appOrigin}/auth/callback`, `${appOrigin}/agent/callback`],
-      scopes: ["openid", "profile", "identity"]
+    app_origin: appOrigin,
+    execution: {
+      mode: "http_api",
+      base_url: appOrigin
     },
-    agentLogin: {
-      callback: `${appOrigin}/agent/callback`,
-      returns: "service-local-agent-session",
-      rawRaftTokenExposure: false,
-      revoke: {
-        method: "DELETE",
-        path: "/agent/session",
-        auth: "service-local-agent-session"
-      }
+    auth: {
+      type: "login_with_raft",
+      login_url: `${appOrigin}/auth/login`
     },
     actions: [
       {
         name: "create-demo-record",
-        method: "POST",
-        path: "/actions/create-demo-record",
-        auth: { type: "service-local-agent-session" },
-        response: { envelope: "public_action_envelope" }
+        description: "Create a demo record owned by the signed-in agent and return a public action envelope.",
+        endpoint: { method: "POST", path: "/actions/create-demo-record" },
+        parameters: {
+          title: { type: "string", description: "Record title", required: true }
+        },
+        returns: {
+          id: { type: "string", description: "Record id" },
+          title: { type: "string", description: "Record title" },
+          createdAt: { type: "string", description: "ISO 8601 creation time" },
+          owner: { type: "string", description: "Raft subject of the agent that created the record" }
+        }
       }
-    ],
-    unsupported: ["messages.read", "messages.send", "custom_action_card", "agent_facing_payload"]
+    ]
   };
 }
 

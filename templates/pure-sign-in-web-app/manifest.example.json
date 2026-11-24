@@ -1,14 +1,15 @@
 {
+  "schema": "raft-agent-manifest.v0",
+  "service": "__PACKAGE_NAME__",
   "name": "Pure Sign-In Demo",
   "description": "Minimal Login with Raft demo app.",
-  "oauth": {
-    "redirectUris": [
-      "http://localhost:4173/auth/callback"
-    ],
-    "scopes": [
-      "openid",
-      "profile",
-      "identity"
-    ]
+  "app_origin": "http://localhost:4173",
+  "execution": {
+    "mode": "http_api",
+    "base_url": "http://localhost:4173"
+  },
+  "auth": {
+    "type": "login_with_raft",
+    "login_url": "http://localhost:4173/auth/login"
   }
 }

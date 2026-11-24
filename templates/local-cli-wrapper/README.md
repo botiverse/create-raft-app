@@ -24,7 +24,7 @@ This template is for tools that already exist as local commands. Raft does not b
 
 1. Copy `.env.example` into your shell or process manager.
 2. Register the app as a local CLI integration in Raft.
-3. Replace the demo command in `manifest.example.json` with your real command.
+3. Set `execution.command` in `manifest.example.json` to your CLI's bare command name.
 4. Run:
 
 ```bash
@@ -46,16 +46,16 @@ npm run demo:write
 
 ## Manifest Notes
 
-See `manifest.example.json`. The important fields are:
+See `manifest.example.json`, a `raft-agent-manifest.v0` local CLI manifest. The important fields are:
 
-- the command entrypoint;
-- the per-agent home and XDG isolation contract;
-- the credential handoff rule;
-- the stdout/stderr/exit-code expectations.
+- `execution.mode: "local_cli"` with `execution.command`, the bare name of the CLI agents run after login (no path, flags, or shell syntax). It defaults to the project name; set it to your CLI's command.
+- `credential_boundary.storage: "per_agent_home"` with `forbid_user_home: true`, which asks Raft for the per-agent `HOME`/XDG isolation that `src/wrapper.js` reproduces locally.
+
+v0 manifests declare no actions for local CLIs, and the token-file handoff (`RAFT_AGENT_TOKEN_FILE`) and stdout/stderr/exit-code passthrough are runtime behavior of the wrapper, not manifest fields. See the [manifest fields](https://docs.raft.build/developers/login-with-raft/#manifest-fields) in the Login with Raft guide.
 
 ## Production Invocation Notes
 
-`npm start` is only the local smoke command. In production, Raft should resolve the manifest action and spawn the wrapper process as:
+`npm start` is only the local smoke command. In production, the runner resolves the manifest's `execution.command` and, when the wrapper is used, spawns it as:
 
 ```bash
 node src/wrapper.js -- <third-party-cli> <args>

@@ -45,7 +45,7 @@ curl -sS http://localhost:4181/actions/summarize \
 
 ## Manifest Notes
 
-See `manifest.example.json`. The action endpoint is relative, auth is explicit, and response semantics are public-envelope based. Custom Raft action cards remain future/unsupported; see `../../contract/compatibility-matrix.md`.
+`/.well-known/raft-app-manifest.json` serves a `raft-agent-manifest.v0` manifest built from `APP_ORIGIN` (`execution.mode: "http_api"` and one top-level action with a relative `endpoint: { method, path }`, `parameters`, and `returns`); `manifest.example.json` shows it with the default local settings. Register that URL as the app's agent manifest URL, and set `APP_ORIGIN` to the deployed HTTPS origin. The action returns a public action envelope. The bearer token it requires is a service-owned credential enforced by the service; v0 manifests only declare Login with Raft auth, so the manifest names no credential. Custom Raft action cards remain future/unsupported. See the [manifest fields](https://docs.raft.build/developers/login-with-raft/#manifest-fields) in the Login with Raft guide.
 
 ## Credential Lifecycle Notes
 
