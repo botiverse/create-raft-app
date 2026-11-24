@@ -18,6 +18,17 @@ let redirectTargetHits = 0;
 // APP_ORIGIN is https, so the app only sets its Secure session cookie on a
 // request it knows was HTTPS: here, via a TLS-terminating proxy's header.
 const viaHttpsProxy = { "x-forwarded-proto": "https" };
+// Raft token-endpoint refusals, keyed by the code the callback is given, as
+// packages/server/src/routes/oauth.ts sends them.
+const raftTokenErrors = {
+  // A browser OIDC code reused, expired, or not ours.
+  "spent-oidc-code": { status: 400, body: { error: "invalid_grant", error_description: "The authorization code is invalid, expired, or has already been used" } },
+  // An Agent Login request id (what `raft integration login` hands the callback) reused or expired.
+  "consumed-agent-request": { status: 409, body: { error: "request_already_consumed", error_description: "This Login with Raft request is one-time and has already been exchanged. Discard it and obtain a fresh request before retrying.", next_action: "obtain_fresh_request" } },
+  "expired-agent-request": { status: 400, body: { error: "agent_request_expired", error_description: "This Agent Login request has expired. Obtain a fresh request before retrying.", next_action: "obtain_fresh_request" } },
+  // Not a stale code: a misconfigured app must not be told to retry login.
+  "token-only-app": { status: 400, body: { error: "unauthorized_client", error_description: "This App is token-only (its agent token type is JWT), so it can't exchange sign-in codes or agent login requests" } },
+};
 let providerIdentity = { sub: "synthetic-user", type: "human", client_id: "fixture-app", server_id: "fixture-server" };
 
 before(async () => {
@@ -52,8 +63,8 @@ before(async () => {
       calls.push(url);
       redirectInits.push(init?.redirect);
       const code = typeof init?.body === "string" ? JSON.parse(init.body).code : undefined;
-      if (url.endsWith("/api/oauth/token") && code === "used") {
-        return Response.json({ error: "invalid_grant", error_description: "The authorization code is invalid, expired, or has already been used" }, { status: 400 });
+      if (url.endsWith("/api/oauth/token") && Object.hasOwn(raftTokenErrors, code)) {
+        return Response.json(raftTokenErrors[code].body, { status: raftTokenErrors[code].status });
       }
       if (url.endsWith("/api/oauth/token") && code === "redirected") return nativeFetch(`${redirectorOrigin}/token`, init);
       if (url.endsWith("/api/oauth/token")) return Response.json({ access_token: "synthetic-token" });
@@ -162,19 +173,32 @@ test("calls to Raft never follow redirects", async () => {
   assert.deepEqual(redirectInits, ["manual", "manual", "manual"]);
 });
 
-test("an expired or already-used code returns a typed 409 without a session", async () => {
-  calls = [];
+test("a spent code returns a typed 409 without a session, on the agent and browser paths", async () => {
   providerIdentity = { sub: "synthetic-agent", type: "agent", client_id: "fixture-app", server_id: "fixture-server" };
-  const reused = await fetch(`${appOrigin}/auth/raft/callback?code=used`, { headers: viaHttpsProxy, redirect: "manual" });
-  assert.equal(reused.status, 409);
-  const body = await reused.json();
-  assert.equal(body.error, "CODE_EXPIRED_OR_USED");
-  assert.equal(typeof body.hint, "string");
-  assert.equal(reused.headers.getSetCookie().length, 0);
-  // No identity lookup happens for a rejected code.
-  assert.deepEqual(calls, ["https://raft.example.test/api/oauth/token"]);
+  for (const code of ["consumed-agent-request", "expired-agent-request", "spent-oidc-code"]) {
+    calls = [];
+    const agent = await fetch(`${appOrigin}/auth/raft/callback?code=${code}`, { headers: viaHttpsProxy, redirect: "manual" });
+    assert.equal(agent.status, 409, code);
+    const body = await agent.json();
+    assert.equal(body.error, "CODE_EXPIRED_OR_USED");
+    assert.equal(typeof body.hint, "string");
+    assert.equal(agent.headers.getSetCookie().length, 0);
+    // No identity lookup happens for a rejected code.
+    assert.deepEqual(calls, ["https://raft.example.test/api/oauth/token"]);
+  }
   const { state, cookies } = await begin();
-  const browserReuse = await fetch(`${appOrigin}/auth/raft/callback?code=used&state=${state}`, { headers: { ...viaHttpsProxy, cookie: cookies }, redirect: "manual" });
-  assert.equal(browserReuse.status, 409);
-  assert.equal((await browserReuse.json()).error, "CODE_EXPIRED_OR_USED");
+  const browser = await fetch(`${appOrigin}/auth/raft/callback?code=spent-oidc-code&state=${state}`, { headers: { ...viaHttpsProxy, cookie: cookies }, redirect: "manual" });
+  assert.equal(browser.status, 409);
+  assert.equal((await browser.json()).error, "CODE_EXPIRED_OR_USED");
+});
+
+test("any other token refusal is a 502 that carries Raft's error code", async () => {
+  calls = [];
+  const response = await fetch(`${appOrigin}/auth/raft/callback?code=token-only-app`, { headers: viaHttpsProxy, redirect: "manual" });
+  assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.equal(body.error, "TOKEN_EXCHANGE_REJECTED");
+  assert.equal(body.raft_error, "unauthorized_client");
+  assert.equal(response.headers.getSetCookie().length, 0);
+  assert.deepEqual(calls, ["https://raft.example.test/api/oauth/token"]);
 });

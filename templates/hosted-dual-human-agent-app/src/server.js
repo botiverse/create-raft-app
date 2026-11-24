@@ -225,6 +225,20 @@ function requireAppSession(req, res, next) {
   res.redirect(`/login?return_to=${encodeURIComponent(req.originalUrl)}`);
 }
 
+// Raft's token-endpoint error codes for a code that can never be exchanged
+// again, so the caller should start a fresh login. A browser OIDC code answers
+// 400 invalid_grant; an Agent Login request id (what `raft integration login`
+// hands this callback) answers 409 request_already_consumed, or 400
+// authorization_code_expired / agent_request_expired. Every other error
+// (unauthorized_client, an unsupported grant, ...) is a configuration or
+// platform problem, not a stale code.
+const spentCodeErrors = new Set([
+  "invalid_grant",
+  "authorization_code_expired",
+  "agent_request_expired",
+  "request_already_consumed"
+]);
+
 // Both Raft API calls carry credentials (client secret, access token), so a
 // redirect is a failure, never something to follow to another URL.
 async function exchangeCode(code, res) {
@@ -241,17 +255,25 @@ async function exchangeCode(code, res) {
     })
   });
 
-  // 400 (invalid_grant): the code expired, was already used, or is not ours.
-  // 409 reads as "expired or already used" to `raft integration login`.
-  if (tokenResponse.status === 400) {
-    res.status(409).json({
-      error: "CODE_EXPIRED_OR_USED",
-      hint: "This login code expired or was already used; start the login again for a fresh one."
-    });
-    return null;
-  }
   if (!tokenResponse.ok) {
-    res.status(502).send(`Token exchange failed: ${tokenResponse.status}`);
+    const body = await tokenResponse.json().catch(() => null);
+    const raftError = typeof body?.error === "string" ? body.error.slice(0, 100) : null;
+    if (raftError && spentCodeErrors.has(raftError)) {
+      // 409 reads as "expired or already used" to `raft integration login`.
+      res.status(409).json({
+        error: "CODE_EXPIRED_OR_USED",
+        hint: "This login code expired or was already used; start the login again for a fresh one."
+      });
+    } else if (raftError) {
+      res.status(502).json({
+        error: "TOKEN_EXCHANGE_REJECTED",
+        raft_error: raftError,
+        hint: "Raft refused the code exchange; check this app's registration, client credentials, and installation."
+      });
+    } else {
+      // No Raft error code: a 5xx, a redirect, or a non-JSON reply.
+      res.status(502).json({ error: "RAFT_UNAVAILABLE", hint: "Could not exchange the code with Raft; retry later." });
+    }
     return null;
   }
   return tokenResponse.json();
