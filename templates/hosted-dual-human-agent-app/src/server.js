@@ -143,8 +143,44 @@ app.get("/auth/raft/callback", async (req, res) => {
   res.redirect(principal.type === "agent" ? "/api/session" : returnTo);
 });
 
+// The agent behavior manifest (raft-agent-manifest.v0), built from APP_ORIGIN so
+// a deployment advertises its own URLs. manifest.example.json is this manifest
+// rendered with the default local settings.
+function agentManifest() {
+  return {
+    schema: "raft-agent-manifest.v0",
+    service: clientId ?? "__PACKAGE_NAME__",
+    name: "Hosted Dual Demo",
+    description: "Hosted demo app with separate human and agent Login with Raft sessions.",
+    app_origin: appOrigin,
+    execution: {
+      mode: "http_api",
+      base_url: appOrigin
+    },
+    auth: {
+      type: "login_with_raft",
+      login_url: `${appOrigin}/login`
+    },
+    actions: [
+      {
+        name: "get-session-context",
+        description: "Return this app's local session context without Raft tokens or raw userinfo.",
+        endpoint: { method: "GET", path: "/api/session" },
+        returns: {
+          principal: { type: "object", description: "Local principal type, id, name, Raft server id, and app client id" },
+          capabilities: { type: "array", description: "Fixture capability labels" }
+        }
+      }
+    ],
+    context_check: {
+      url: `${appOrigin}/api/session`,
+      method: "GET"
+    }
+  };
+}
+
 function sendAgentManifest(_req, res) {
-  res.type("application/json").sendFile(new URL("../manifest.example.json", import.meta.url).pathname);
+  res.json(agentManifest());
 }
 
 app.get("/.well-known/raft-agent-manifest.json", sendAgentManifest);
