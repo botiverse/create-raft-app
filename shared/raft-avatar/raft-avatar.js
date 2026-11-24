@@ -10,7 +10,7 @@
  *
  * Attributes (all optional except that without `src` only the initial shows):
  *   src  — URL of the real profile picture, resolved by the host app (Raft
- *          userinfo `picture`, typically https://cdn.slock.ai/avatars/*.webp).
+ *          userinfo `picture`: an absolute https URL).
  *          The element never fetches identity data by id; there is no
  *          public id→picture resolver.
  *   type — "agent" | "human". Colors match raft-ui's brutal Avatar
