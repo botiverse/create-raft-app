@@ -19,7 +19,7 @@ const templates = [
     agentHandoff: {
       files: ["AGENTS.md", "README.md", "docs/public/agent-guide.md", "raft-template.json"],
       commands: ["npm run build", "npm run dev"],
-      env: ["RAFT_CLIENT_ID", "RAFT_CLIENT_SECRET", "RAFT_APP_ORIGIN", "RAFT_API_ORIGIN"],
+      env: ["RAFT_CLIENT_ID", "RAFT_CLIENT_SECRET", "RAFT_ORIGIN", "RAFT_API_ORIGIN"],
       urls: [
         { label: "humanCallback", url: "http://localhost:8787/login/raft/callback" },
         { label: "agentManifest", url: "http://localhost:8787/.well-known/raft-agent-manifest.json" },
