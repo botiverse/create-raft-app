@@ -55,7 +55,7 @@ const templates = [
       env: ["RAFT_AGENT_ID", "RAFT_AGENT_HOME", "RAFT_AGENT_TOKEN_FILE", "RAFT_APP_ID"],
       urls: [],
       registration: [
-        "Register the wrapper command from manifest.example.json as a local CLI integration.",
+        "Register a local CLI integration for the bare command in manifest.example.json (execution.command).",
         "Pin the production command path and keep credentials in the runner-owned handoff path.",
       ],
     },
@@ -196,7 +196,11 @@ function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === "--template") {
+    if (arg === "--") {
+      // `npm create raft-app <name> -- --flag` can forward the separator
+      // itself; it carries no option, so skip it and keep parsing.
+      continue;
+    } else if (arg === "--template") {
       options.template = argv[++i];
     } else if (arg.startsWith("--template=")) {
       options.template = arg.slice("--template=".length);

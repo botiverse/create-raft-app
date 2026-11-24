@@ -26,12 +26,19 @@ const fixtureCapabilities = [
   "static.auth_gate"
 ];
 
+// The session cookie is Secure everywhere except plain-http loopback dev
+// (APP_ORIGIN=http://localhost:4174). Behind a TLS-terminating proxy the app
+// reads X-Forwarded-Proto from the first hop to know the request was HTTPS.
+const secureCookies = !isLoopbackHttpOrigin(appOrigin);
+if (secureCookies) app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(
   cookieSession({
     name: "raft_hosted_dual",
     secret: process.env.SESSION_SECRET ?? "dev-only-change-me",
     httpOnly: true,
+    secure: secureCookies,
     sameSite: "lax"
   })
 );
@@ -218,9 +225,26 @@ function requireAppSession(req, res, next) {
   res.redirect(`/login?return_to=${encodeURIComponent(req.originalUrl)}`);
 }
 
+// Raft's token-endpoint error codes for a code that can never be exchanged
+// again, so the caller should start a fresh login. A browser OIDC code answers
+// 400 invalid_grant; an Agent Login request id (what `raft integration login`
+// hands this callback) answers 409 request_already_consumed, or 400
+// authorization_code_expired / agent_request_expired. Every other error
+// (unauthorized_client, an unsupported grant, ...) is a configuration or
+// platform problem, not a stale code.
+const spentCodeErrors = new Set([
+  "invalid_grant",
+  "authorization_code_expired",
+  "agent_request_expired",
+  "request_already_consumed"
+]);
+
+// Both Raft API calls carry credentials (client secret, access token), so a
+// redirect is a failure, never something to follow to another URL.
 async function exchangeCode(code, res) {
   const tokenResponse = await fetch(`${raftApiOrigin}/api/oauth/token`, {
     method: "POST",
+    redirect: "manual",
     headers: {
       authorization: `Basic ${basicAuth(clientId, clientSecret)}`,
       "content-type": "application/json"
@@ -232,7 +256,24 @@ async function exchangeCode(code, res) {
   });
 
   if (!tokenResponse.ok) {
-    res.status(502).send(`Token exchange failed: ${tokenResponse.status}`);
+    const body = await tokenResponse.json().catch(() => null);
+    const raftError = typeof body?.error === "string" ? body.error.slice(0, 100) : null;
+    if (raftError && spentCodeErrors.has(raftError)) {
+      // 409 reads as "expired or already used" to `raft integration login`.
+      res.status(409).json({
+        error: "CODE_EXPIRED_OR_USED",
+        hint: "This login code expired or was already used; start the login again for a fresh one."
+      });
+    } else if (raftError) {
+      res.status(502).json({
+        error: "TOKEN_EXCHANGE_REJECTED",
+        raft_error: raftError,
+        hint: "Raft refused the code exchange; check this app's registration, client credentials, and installation."
+      });
+    } else {
+      // No Raft error code: a 5xx, a redirect, or a non-JSON reply.
+      res.status(502).json({ error: "RAFT_UNAVAILABLE", hint: "Could not exchange the code with Raft; retry later." });
+    }
     return null;
   }
   return tokenResponse.json();
@@ -240,6 +281,7 @@ async function exchangeCode(code, res) {
 
 async function fetchUserinfo(accessToken, res) {
   const userinfoResponse = await fetch(`${raftApiOrigin}/api/oauth/userinfo`, {
+    redirect: "manual",
     headers: { authorization: `Bearer ${accessToken}` }
   });
   if (!userinfoResponse.ok) {
@@ -288,6 +330,11 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function isLoopbackHttpOrigin(origin) {
+  const { protocol, hostname } = new URL(origin);
+  return protocol === "http:" && (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]");
 }
 
 function normalizeOrigin(value) {

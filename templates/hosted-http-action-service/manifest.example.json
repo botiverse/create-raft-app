@@ -1,40 +1,25 @@
 {
+  "schema": "raft-agent-manifest.v0",
+  "service": "__PACKAGE_NAME__",
   "name": "Hosted HTTP Action Service Demo",
   "description": "Manifest-declared HTTP action service with public action envelope responses.",
-  "manifestVersion": "0.1",
-  "appType": "http_api",
-  "conversationRole": "tool_api",
+  "app_origin": "http://localhost:4181",
+  "execution": {
+    "mode": "http_api",
+    "base_url": "http://localhost:4181"
+  },
   "actions": [
     {
       "name": "summarize",
-      "method": "POST",
-      "path": "/actions/summarize",
-      "auth": {
-        "type": "bearer",
-        "description": "Bearer token issued by the service owner or Raft app registration flow."
+      "description": "Summarize text and return a public action envelope { ok, result: { summary, wordCount } }.",
+      "endpoint": { "method": "POST", "path": "/actions/summarize" },
+      "parameters": {
+        "text": { "type": "string", "description": "Text to summarize", "required": true }
       },
-      "request": {
-        "contentType": "application/json",
-        "schema": {
-          "type": "object",
-          "required": [
-            "text"
-          ],
-          "properties": {
-            "text": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "response": {
-        "envelope": "public_action_envelope"
+      "returns": {
+        "summary": { "type": "string", "description": "The text, or its first 12 words followed by ..." },
+        "wordCount": { "type": "number", "description": "Number of words in the text" }
       }
     }
-  ],
-  "unsupported": [
-    "custom_action_card",
-    "messages.read",
-    "messages.send"
   ]
 }

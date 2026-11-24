@@ -122,7 +122,22 @@ function clearStaleSessionCookie(c: AppContext) {
 // RAFT_CLIENT_SECRET (set after registering the app with Raft).
 type Exchange =
   | { ok: true; access_token: string; expires_in?: number }
-  | { ok: false; reason: "not_configured" | "code_rejected" | "upstream" };
+  | { ok: false; reason: "not_configured" }
+  | { ok: false; reason: "code_rejected" | "upstream"; raftError?: string };
+
+// Raft's token-endpoint error codes for a code that can never be exchanged
+// again, so the caller should start a fresh login. A browser OIDC code answers
+// 400 invalid_grant; an Agent Login request id answers 409
+// request_already_consumed, or 400 authorization_code_expired /
+// agent_request_expired. Every other error (unauthorized_client, an
+// unsupported grant, ...) is a configuration or platform problem, not a stale
+// code.
+const SPENT_CODE_ERRORS = new Set([
+  "invalid_grant",
+  "authorization_code_expired",
+  "agent_request_expired",
+  "request_already_consumed",
+]);
 
 async function exchangeRaftCode(env: Bindings, code: string): Promise<Exchange> {
   if (!env.RAFT_CLIENT_SECRET) return { ok: false, reason: "not_configured" };
@@ -134,9 +149,12 @@ async function exchangeRaftCode(env: Bindings, code: string): Promise<Exchange> 
     headers: { "content-type": "application/json", authorization: `Basic ${basic}` },
     body: JSON.stringify({ grant_type: "authorization_code", code }),
   });
-  // 400: the code expired, was already used, or is not ours. Start over.
-  if (res.status === 400) return { ok: false, reason: "code_rejected" };
-  if (!res.ok) return { ok: false, reason: "upstream" };
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    const raftError = typeof body?.error === "string" ? body.error.slice(0, 100) : undefined;
+    if (raftError && SPENT_CODE_ERRORS.has(raftError)) return { ok: false, reason: "code_rejected", raftError };
+    return { ok: false, reason: "upstream", raftError };
+  }
   const token = (await res.json()) as { access_token?: string; expires_in?: number };
   if (!token.access_token) return { ok: false, reason: "upstream" };
   return { ok: true, access_token: token.access_token, expires_in: token.expires_in };
@@ -273,6 +291,13 @@ app.get("/login/raft/callback", async (c) => {
         error: "CODE_EXPIRED_OR_USED",
         hint: "This login code expired or was already used; start the login again for a fresh one.",
       }, 409);
+    }
+    if (token.raftError) {
+      return c.json({
+        error: "TOKEN_EXCHANGE_REJECTED",
+        raft_error: token.raftError,
+        hint: "Raft refused the code exchange; check this app's registration, client credentials, and installation.",
+      }, 502);
     }
     return c.json({ error: "RAFT_UNAVAILABLE", hint: "Could not confirm the identity with Raft; retry later." }, 502);
   }

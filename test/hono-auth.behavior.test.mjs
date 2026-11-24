@@ -45,13 +45,27 @@ after(async () => {
   if (tempRoot) await rm(tempRoot, { recursive: true, force: true });
 });
 
-function identityProvider(t, { clientId = env.RAFT_CLIENT_ID, type = "agent", serverId = "fixture-server-id", tokenStatus = 200 } = {}) {
+// Raft token-endpoint refusals, as packages/server/src/routes/oauth.ts sends them.
+const raftTokenErrors = {
+  // Browser OIDC code reused, expired, or not ours.
+  oidcCodeSpent: { status: 400, body: { error: "invalid_grant", error_description: "The authorization code is invalid, expired, or has already been used" } },
+  // Agent Login request id (what `raft integration login` hands the callback) reused.
+  agentRequestConsumed: { status: 409, body: { error: "request_already_consumed", error_description: "This Login with Raft request is one-time and has already been exchanged. Discard it and obtain a fresh request before retrying.", next_action: "obtain_fresh_request" } },
+  agentRequestExpired: { status: 400, body: { error: "agent_request_expired", error_description: "This Agent Login request has expired. Obtain a fresh request before retrying.", next_action: "obtain_fresh_request" } },
+  authorizationCodeExpired: { status: 400, body: { error: "authorization_code_expired", error_description: "This Login with Raft authorization code has expired. Obtain a fresh human authorization before retrying.", next_action: "obtain_fresh_authorization" } },
+  // Not a stale code: a misconfigured app must not be told to retry login.
+  unauthorizedClient: { status: 400, body: { error: "unauthorized_client", error_description: "This App is token-only (its agent token type is JWT), so it can't exchange sign-in codes or agent login requests" } },
+};
+
+function identityProvider(t, { clientId = env.RAFT_CLIENT_ID, type = "agent", serverId = "fixture-server-id", tokenError } = {}) {
   const calls = [];
   t.mock.method(globalThis, "fetch", async (input) => {
     const url = String(input);
     calls.push(url);
     if (url === `${env.RAFT_API_ORIGIN}/api/oauth/token`) {
-      return Response.json(tokenStatus === 200 ? { access_token: token, expires_in: 3600 } : { error: "rejected" }, { status: tokenStatus });
+      return tokenError
+        ? Response.json(tokenError.body, { status: tokenError.status })
+        : Response.json({ access_token: token, expires_in: 3600 });
     }
     assert.equal(url, `${env.RAFT_API_ORIGIN}/api/oauth/userinfo`, "unexpected network request");
     return Response.json({ sub: "fixture-principal", type, client_id: clientId, name: "Fixture", server_id: serverId, server_slug: "fixture-server" });
@@ -188,11 +202,24 @@ test("a browser callback with an unrelated state is rejected before code exchang
   assert.deepEqual(calls, []);
 });
 
-test("expired or consumed codes return 409 without a session or identity lookup", async (t) => {
-  const calls = identityProvider(t, { tokenStatus: 400 });
+for (const name of ["oidcCodeSpent", "agentRequestConsumed", "agentRequestExpired", "authorizationCodeExpired"]) {
+  test(`a spent code (${raftTokenErrors[name].body.error}) returns 409 without a session or identity lookup`, async (t) => {
+    const calls = identityProvider(t, { tokenError: raftTokenErrors[name] });
+    const response = await callback();
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error, "CODE_EXPIRED_OR_USED");
+    assert.equal(sessionCookie(response), undefined);
+    assert.deepEqual(calls, [`${env.RAFT_API_ORIGIN}/api/oauth/token`]);
+  });
+}
+
+test("any other token refusal is a 502 that carries Raft's error code", async (t) => {
+  const calls = identityProvider(t, { tokenError: raftTokenErrors.unauthorizedClient });
   const response = await callback();
-  assert.equal(response.status, 409);
-  assert.equal((await response.json()).error, "CODE_EXPIRED_OR_USED");
+  assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.equal(body.error, "TOKEN_EXCHANGE_REJECTED");
+  assert.equal(body.raft_error, "unauthorized_client");
   assert.equal(sessionCookie(response), undefined);
   assert.deepEqual(calls, [`${env.RAFT_API_ORIGIN}/api/oauth/token`]);
 });

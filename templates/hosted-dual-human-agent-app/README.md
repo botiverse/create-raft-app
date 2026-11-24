@@ -52,11 +52,13 @@ state. This template intentionally does not hard-code a server allowlist inside 
 ## Callback Contract
 
 - Browser human login starts at `/login`; it stores a short-lived state in the browser session and sends the same state to `${RAFT_APP_ORIGIN}${RAFT_SETUP_PATH}`. The callback checks both before exchanging the code.
-- `/auth/raft/callback` exchanges codes through `${RAFT_API_ORIGIN}/api/oauth/token` and reads `${RAFT_API_ORIGIN}/api/oauth/userinfo`.
+- `/auth/raft/callback` exchanges codes through `${RAFT_API_ORIGIN}/api/oauth/token` and reads `${RAFT_API_ORIGIN}/api/oauth/userinfo`. Neither call follows redirects: both carry credentials, so a redirect fails the login instead.
+- A code Raft rejects as expired or already used returns `409` with `{ "error": "CODE_EXPIRED_OR_USED", "hint": "..." }`; start the login again for a fresh code. That covers Raft's `invalid_grant` (a browser code), `request_already_consumed` and `agent_request_expired` (an Agent Login request), and `authorization_code_expired`. Any other refusal returns `502` with `{ "error": "TOKEN_EXCHANGE_REJECTED", "raft_error": "<Raft's code>" }`, and an unreachable or non-JSON reply returns `502` with `RAFT_UNAVAILABLE`.
 - `/auth/raft/callback` rejects missing browser-session proof for human principals.
 - `/auth/raft/callback` accepts a missing browser-session proof only when the exchanged principal is an agent.
 - Wrong or absent `client_id`, absent Server context, or unsupported principal type fails without creating a session. An app that is restricted to particular Servers must check them separately.
 - Local session cookies are app-owned; logging out clears only this app session.
+- The session cookie is `Secure` unless `APP_ORIGIN` is plain-http loopback (`http://localhost`, `127.0.0.1`, or `[::1]`), so local dev works over http. Any other origin must be served over HTTPS, including other loopback names such as `127.0.0.2` or `app.localhost`, which also get `Secure`. Behind a TLS-terminating proxy, the app trusts the first hop's `X-Forwarded-Proto`.
 
 ## Agent Manifest Notes
 

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { test } from "node:test";
+import { validateAgentManifestV0 } from "../conformance/agent-manifest-v0.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const templateNames = [
@@ -112,6 +113,21 @@ test("lists every packaged template", async () => {
   }
 });
 
+test("a forwarded -- separator is ignored", async () => {
+  // npm/pnpm create can pass the `--` through to the CLI.
+  const listed = await run(["--", "--list-templates"], repoRoot);
+  assert.match(listed.stdout, /^Available templates:/m);
+  const json = await run(["--list-templates", "--", "--json"], repoRoot);
+  assert.equal(JSON.parse(json.stdout).schemaVersion, "create-raft-app.templates.v1");
+  const tmp = await mkdtemp(path.join(os.tmpdir(), "create-raft-app-"));
+  try {
+    const result = await run(["sep-app", "--", "--template", "local-cli-wrapper", "--yes", "--no-install"], tmp);
+    assert.match(result.stdout, /Created sep-app from local-cli-wrapper/);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
 test("lists templates as machine-readable JSON", async () => {
   const result = await run(["--list-templates", "--json"], repoRoot);
   const body = JSON.parse(result.stdout);
@@ -142,6 +158,61 @@ test("every handoff env key is read by the template's code or config", async () 
       assert.match(sources, new RegExp(`\\b${key}\\b`), `${template.name} handoff lists ${key}, which the template never reads`);
     }
   }
+});
+
+test("every template's manifest.example.json is a raft-agent-manifest.v0 manifest", async () => {
+  const checked = [];
+  for (const templateName of templateNames) {
+    const file = path.join(repoRoot, "templates", templateName, "manifest.example.json");
+    if (!existsSync(file)) continue;
+    const manifest = JSON.parse(await readFile(file, "utf8"));
+    assert.deepEqual(validateAgentManifestV0(manifest), [], `${templateName}/manifest.example.json`);
+    checked.push(templateName);
+  }
+  assert.deepEqual(checked.sort(), [
+    "hosted-dual-human-agent-app",
+    "hosted-http-action-service",
+    "local-cli-wrapper",
+    "oauth-http-action-service",
+    "pure-sign-in-web-app",
+  ]);
+});
+
+test("the v0 manifest check rejects legacy and unsupported shapes", () => {
+  const httpApi = {
+    schema: "raft-agent-manifest.v0",
+    execution: { mode: "http_api", base_url: "https://app.example.test" },
+    actions: [{ name: "summarize", endpoint: { method: "POST", path: "/actions/summarize" } }],
+  };
+  assert.deepEqual(validateAgentManifestV0(httpApi), []);
+  const problems = (manifest) => validateAgentManifestV0(manifest).join("\n");
+  // The pre-v0 template shape: no schema/execution, flat method/path actions.
+  const legacy = problems({ name: "Demo", manifestVersion: "0.1", appType: "http_api", actions: [{ name: "summarize", method: "POST", path: "/actions/summarize" }] });
+  assert.match(legacy, /schema must be raft-agent-manifest\.v0/);
+  assert.match(legacy, /execution must be an object/);
+  assert.match(legacy, /unknown top-level field 'manifestVersion'/);
+  assert.match(problems({ ...httpApi, schema: "https://app.raft.build/schemas/agent-manifest.v0.json" }), /schema must be/);
+  assert.match(problems({ ...httpApi, http_api: { actions: [] } }), /unknown top-level field 'http_api'/);
+  assert.match(problems({ ...httpApi, actions: [{ name: "x", method: "GET", path: "/x" }] }), /endpoint must be an object/);
+  assert.match(problems({ ...httpApi, actions: [{ name: "x", endpoint: { method: "GET", path: "https://evil.example/x" } }] }), /relative service path/);
+  assert.match(problems({ ...httpApi, actions: [httpApi.actions[0], httpApi.actions[0]] }), /duplicate action name/);
+  // WHATWG URL parsing reads a backslash as a slash, so these leave the origin.
+  for (const path of ["/\\evil.test/x", "/\\\\evil.test/x", "/\t/evil.test/x"]) {
+    assert.match(problems({ ...httpApi, actions: [{ name: "x", endpoint: { method: "GET", path } }] }), /own origin|relative service path/, JSON.stringify(path));
+  }
+  assert.deepEqual(validateAgentManifestV0({ ...httpApi, actions: [{ name: "x", endpoint: { method: "GET", path: "/files/{id}?download=1" } }] }), []);
+  const fileAction = (response) => ({ ...httpApi, actions: [{ name: "export", endpoint: { method: "GET", path: "/export" }, response }] });
+  assert.deepEqual(validateAgentManifestV0(fileAction({ type: "file", contentType: "text/csv", maxBytes: 1048576 })), []);
+  for (const maxBytes of [-1, 0, 1.5, "10", Number.POSITIVE_INFINITY]) {
+    assert.match(problems(fileAction({ type: "file", maxBytes })), /maxBytes must be a positive integer/, String(maxBytes));
+  }
+  assert.match(problems(fileAction({ type: "json" })), /response\.type must be file/);
+  const localCli = { schema: "raft-agent-manifest.v0", execution: { mode: "local_cli", command: "demo" }, credential_boundary: { storage: "per_agent_home", forbid_user_home: true } };
+  assert.deepEqual(validateAgentManifestV0(localCli), []);
+  assert.match(problems({ ...localCli, execution: { mode: "local_cli", command: "node src/wrapper.js" } }), /bare command name/);
+  assert.match(problems({ ...localCli, execution: { mode: "local_cli", command: "/usr/local/bin/demo" } }), /bare command name/);
+  assert.match(problems({ ...localCli, credential_boundary: { storage: "per_agent_home" } }), /forbid_user_home must be true/);
+  assert.match(problems({ ...localCli, actions: httpApi.actions }), /only supported for execution\.mode http_api/);
 });
 
 test("test template list matches packaged template directories", async () => {

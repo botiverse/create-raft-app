@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import dotenv from "dotenv";
 import express from "express";
 
@@ -34,24 +35,35 @@ function requireBearer(req, res, next) {
   next();
 }
 
+// The agent behavior manifest (raft-agent-manifest.v0), built from APP_ORIGIN so
+// a deployment advertises its own URLs. manifest.example.json is this manifest
+// rendered with the default local settings. The bearer token the action
+// requires is a service-owned credential and is never part of the manifest.
 function manifest() {
   return {
+    schema: "raft-agent-manifest.v0",
+    service: "__PACKAGE_NAME__",
     name: "Hosted HTTP Action Service Demo",
     description: "Manifest-declared HTTP action service with public action envelope responses.",
-    manifestVersion: "0.1",
-    appType: "http_api",
-    conversationRole: "tool_api",
-    baseUrl: appOrigin,
+    app_origin: appOrigin,
+    execution: {
+      mode: "http_api",
+      base_url: appOrigin
+    },
     actions: [
       {
         name: "summarize",
-        method: "POST",
-        path: "/actions/summarize",
-        auth: { type: "bearer" },
-        response: { envelope: "public_action_envelope" }
+        description: "Summarize text and return a public action envelope { ok, result: { summary, wordCount } }.",
+        endpoint: { method: "POST", path: "/actions/summarize" },
+        parameters: {
+          text: { type: "string", description: "Text to summarize", required: true }
+        },
+        returns: {
+          summary: { type: "string", description: "The text, or its first 12 words followed by ..." },
+          wordCount: { type: "number", description: "Number of words in the text" }
+        }
       }
-    ],
-    unsupported: ["custom_action_card", "messages.read", "messages.send"]
+    ]
   };
 }
 
@@ -92,6 +104,10 @@ app.use((req, res) => {
   res.status(error.status).json(error.body);
 });
 
-app.listen(port, () => {
-  console.log(`Hosted HTTP Action Service fixture listening on ${appOrigin}`);
-});
+export { app };
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  app.listen(port, () => {
+    console.log(`Hosted HTTP Action Service fixture listening on ${appOrigin}`);
+  });
+}
