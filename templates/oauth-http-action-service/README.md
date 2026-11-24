@@ -70,6 +70,8 @@ Browser login redirects through the Raft setup page and returns to this app's ca
 
 The fixture uses HTTP Basic auth for token exchange by default because current Raft accepts it and standard OAuth libraries handle it better. Current Raft also accepts `clientId` / `clientSecret` form fields as a non-standard body fallback; generic OAuth clients often use `client_id` / `client_secret`, so do not rely on body credentials without checking the platform contract.
 
+**Limitation: Raft cannot invoke this action yet.** The manifest is valid v0 and Raft can discover and list the action, but `raft integration invoke` calls a v0 action with the service's own session cookie. It runs Agent Login through the app's registered callback, keeps the cookie that callback sets, and sends that cookie with the action request; a callback that sets no cookie fails the handoff. This fixture's `/agent/callback` returns a service-local bearer token in its JSON body and sets no cookie, and the action only accepts that bearer token. What works today: human browser login, discovery of the manifest, and calling `/agent/callback` then the action directly with the returned bearer token (the `curl` above). To make it Raft-invocable, have the agent callback set an HttpOnly session cookie instead of returning a token, and accept that session on the action (see the `hosted-dual-human-agent-app` template).
+
 `DELETE /agent/session` revokes a service-local agent session. It is a service endpoint, not a manifest action: Raft gains no revoke authority from the manifest, and the service still validates the service-local agent session token.
 
 ## Production Notes
